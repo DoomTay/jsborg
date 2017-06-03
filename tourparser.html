@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8"/>
+</head>
+
+<body>
+<input onchange="previewFile()" type="file"><br>
+<div id="dataDisplay"></div>
+<script type="text/javascript">
+var metadata = "";
+
+function previewFile()
+{
+	var file    = document.querySelector('input[type=file]').files[0];
+	var reader  = new FileReader();
+
+	reader.addEventListener("load", function()
+	{
+		var dataView = new DataView(reader.result,0);
+		
+		var dataDisplay = document.getElementById("dataDisplay");
+		var dataView = new DataView(reader.result);
+		var length = dataView.getUint32(4,true) - 4;
+		offset = 0;
+		var dataObject = {};
+		while(offset < length)
+		{
+			offset++;
+		}
+		
+		dataObject.stream = new Uint8Array(reader.result);
+		
+		console.log(dataObject);
+		dataDisplay.innerHTML = "";
+		
+		var dataTable = createTable(dataObject);
+		dataTable.style.tableLayout = "fixed";
+		dataDisplay.appendChild(dataTable);
+		
+	}, false);
+
+	if (file)
+	{
+		reader.readAsArrayBuffer(file);
+	}
+}
+
+function arrayEquals(array1,array2)
+{
+	if(array1.length != array2.length) return false;
+	else return array1.every((elem1,i) => elem1 == array2[i]);
+}
+
+function createTable(object)
+{
+	var newTable = document.createElement("table");
+	newTable.border = 1;
+	for(var key in object) {
+		var row = newTable.insertRow(-1);
+		var keyCell = row.insertCell(0);
+		var valueCell = row.insertCell(1);
+		keyCell.innerHTML = formatString(key);
+		if(key == "entries")
+		{
+			var colorTable = document.createElement("table");
+			for(var i = 0; i < object[key].length; i += 16)
+			{
+				var colorRow = colorTable.insertRow(-1);
+				for(var f = 0; f < 16; f++)
+				{
+					var currentColor = object[key][i + f];
+					var colorCell = colorRow.insertCell(-1);
+					colorCell.width = 10;
+					colorCell.height = 10;
+					colorCell.style.backgroundColor = "rgb(" + currentColor.r + "," + currentColor.g + "," + currentColor.b + ")";
+				}
+			}
+			
+			valueCell.innerHTML += colorTable.outerHTML;
+		}
+		else if((object[key] instanceof Int8Array || object[key] instanceof Uint8Array) && object[key].length > 36) valueCell.innerHTML = "(" + object[key].length + "-byte garbage)";
+		else if(Array.isArray(object[key]) && typeof(object[key][0]) == "object")
+		{
+			{
+				for(var i = 0; i < object[key].length; i++)
+				{
+					valueCell.innerHTML += createTable(object[key][i]).outerHTML;
+				}
+			}
+		}
+		else if(Array.isArray(object[key]) && typeof(object[key][0]) != "object") valueCell.innerHTML = object[key];
+		else if(object[key] instanceof Object)
+		{
+			if(!(object[key] instanceof Int8Array || object[key] instanceof Uint8Array) && !(object[key] instanceof Array))
+			{
+				var objectTable = createTable(object[key]);
+				valueCell.innerHTML = objectTable.outerHTML;
+			}
+			else valueCell.innerHTML = JSON.stringify(object[key]);
+		}
+		else if(typeof object[key] == "string") valueCell.innerHTML = object[key];
+		else valueCell.innerHTML = JSON.stringify(object[key]);
+	}
+	return newTable;
+}
+
+function encodeHTML(text) {
+    var textarea = document.createElement("textarea");
+    textarea.innerHTML = text;
+    return textarea.innerHTML;
+}
+
+function bytesToString(stringBytes)
+{
+	var string = "";
+	for (var i = 0; i < stringBytes.length; i++)
+	{
+		string += String.fromCharCode(stringBytes[i]);
+	}
+	return string;
+}
+
+function formatString(string)
+{
+	string = string[0].toUpperCase() + string.substring(1);
+	string = string.replace(/([A-Z])/g, ' $1').replace("_"," ");
+	for(var i = 1; i < string.length; i++)
+	{
+		if(/[A-Z]/.test(string[i]) && /[A-Z]/.test(string[i + 2])) string = string.replace(/([A-Z]) ([A-Z])/, '$1$2');
+	}
+	return string;
+}
+
+function int8ToInt16(bytes)
+{
+  var array = new Uint16Array({length: bytes.byteLength / 2});
+  for(var i = 0; i < bytes.byteLength; i += 2)
+  {
+    array[(i / 2)] = (bytes[i] << 8) + bytes[i + 1];
+  }
+  return array;
+}
+
+function getBytes(view,offset,length)
+{
+	var bytes = new Uint8Array(view.buffer,offset,length);
+	return bytes;
+}
+
+function get16bitBytes(view,offset,length)
+{
+	var bytes = new Uint16Array(length);
+	for (var i = 0; i < length * 2; i += 2)
+	{
+		bytes[(i / 2)] = view.getUint16(offset + i);
+	}
+	return bytes;
+}
+
+function get8bitString(viewer,startingPoint)
+{
+	var stringLength = viewer.getInt32(startingPoint);
+	var string;
+	if(stringLength > 0)
+	{
+		string = bytesToString(getBytes(viewer,startingPoint + 4,stringLength));
+	}
+	else
+	{
+		string = bytesToString(getBytes(viewer,startingPoint + 4,4));
+	}
+	return string;
+}
+
+function getUnicodeString(viewer,start)
+{
+	var stringLength = viewer.getUint32(start);
+	var string = get16bitBytes(viewer,start + 4,stringLength);
+	var encodedString = bytesToString(string);
+	if(encodedString.endsWith("\u0000")) encodedString = encodedString.replace("\u0000"," ");
+	return encodedString;
+}
+</script>
+</body></html>

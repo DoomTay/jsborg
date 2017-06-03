@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html><head>
+<meta charset="utf-8"/>
+</head>
+
+<body>
+<input onchange="previewFile()" type="file"><br>
+<div id="dataDisplay"></div>
+<script src="pako.js"></script>
+<script type="text/javascript">
+var metadata = "";
+
+var JPEGSegmentTable = {};
+JPEGSegmentTable[0xc2] = "SOF2";
+JPEGSegmentTable[0xc4] = "DHT";
+JPEGSegmentTable[0xda] = "SOS";
+JPEGSegmentTable[0xdb] = "DQT";
+
+function previewFile()
+{
+	var preview = document.querySelector('img');
+	var file    = document.querySelector('input[type=file]').files[0];
+	var reader  = new FileReader();
+
+	reader.addEventListener("load", function()
+	{
+		var dataView = new DataView(reader.result,0);
+		
+		var dataDisplay = document.getElementById("dataDisplay");
+		var dataView = new DataView(reader.result);
+		offset = 0;
+		var dataObject = {};
+		
+		var fileType = "";
+		
+		var signature = getBytes(dataView.buffer,0,4);
+		
+		if(signature[0] == 0x89 && signature[1] == 0x50 && signature[2] == 0x4e && signature[3] == 0x47) fileType = "png";
+		
+		else if(signature[0] == 0xff && signature[1] == 0xd8 && signature[2] == 0xff) fileType = "jpeg";
+		
+		if(fileType == "png")
+		{
+			offset += 8;
+			while(offset < dataView.byteLength)
+			{
+				var byteCount = dataView.getUint32(offset);
+				offset += 4;
+				var chunkCode = bytesToString(getBytes(dataView.buffer,offset,4));
+				offset += 4;
+				if(chunkCode == "IHDR")
+				{
+					dataObject[chunkCode] = {};
+					dataObject[chunkCode].width = dataView.getUint32(offset);
+					offset += 4;
+					dataObject[chunkCode].height = dataView.getUint32(offset);
+					offset += 4;
+					dataObject[chunkCode].bitDepth = dataView.getUint8(offset);
+					offset++;
+					dataObject[chunkCode].colorType = dataView.getUint8(offset);
+					offset++;
+					dataObject[chunkCode].compressionMethod = dataView.getUint8(offset);
+					offset++;
+					dataObject[chunkCode].filterMethod = dataView.getUint8(offset);
+					offset++;
+					dataObject[chunkCode].interlaceMethod = dataView.getUint8(offset);
+					offset++;
+				}
+				else if(chunkCode == "IDAT")
+				{
+					if(!dataObject[chunkCode]) dataObject[chunkCode] = [];
+					dataObject[chunkCode].push(getBytes(dataView.buffer,offset,byteCount));
+					offset += byteCount;
+					
+				}
+				else if(chunkCode == "PLTE")
+				{
+					dataObject[chunkCode] = [];
+					for(var i = 0; i < byteCount; i += 3)
+					{
+						dataObject[chunkCode].push({r:dataView.getUint8(offset + i),g:dataView.getUint8(offset + i + 1),b:dataView.getUint8(offset + i + 2)});
+					}
+					
+					dataObject[chunkCode].find = function(r,g,b)
+					{
+						var oldFind = Array.prototype.find;
+						return oldFind.apply(this,[elem => elem.r == r && elem.g == g && elem.b == b]);
+					}
+					
+					dataObject[chunkCode].findIndex = function(r,g,b)
+					{
+						var oldFindIndex = Array.prototype.findIndex;
+						return oldFindIndex.apply(this,[elem => elem.r == r && elem.g == g && elem.b == b]);
+					}
+					offset += byteCount;
+				}
+				else if(chunkCode == "tEXt")
+				{
+					if(!dataObject[chunkCode]) dataObject[chunkCode] = [];
+					var startingPoint = offset;
+					var newText = {};
+					while(dataView.getUint8(offset) != 0) offset++;
+					var key = bytesToString(getBytes(dataView.buffer,startingPoint,offset - startingPoint));
+					offset++;
+					newText[key] = bytesToString(getBytes(dataView.buffer,offset,byteCount - (offset - startingPoint)));
+					dataObject[chunkCode].push(newText);
+					offset += newText[key].length;
+				}
+				else if(chunkCode == "cxBX")
+				{
+					var startingPoint = offset;
+					dataObject[chunkCode] = {};
+					dataObject[chunkCode].unknownThings = [];
+					dataObject[chunkCode].marker = bytesToString(getBytes(dataView.buffer,offset,4));
+					offset += 4;
+					dataObject[chunkCode] = Object.assign(dataObject[chunkCode],parseCWSData(dataView.buffer.slice(offset,offset + byteCount),dataObject[chunkCode].marker));
+					offset += byteCount - 4;
+					while(offset < startingPoint + byteCount)
+					{
+						dataObject[chunkCode][offset - startingPoint] = dataView.getUint8(offset);
+						offset++;
+					}
+				}
+				else if(chunkCode == "IEND")
+				{
+					break;
+				}
+				else
+				{
+					dataObject[chunkCode] = getBytes(dataView.buffer,offset,byteCount);
+					offset += byteCount;
+				}
+				offset += 4;
+			}
+			
+			if(dataObject.IDAT)
+			{
+				dataObject.IDAT = new Uint8Array([].concat.apply([], dataObject.IDAT.map(data => Array.from(data))));
+				var compressed = dataObject.IDAT
+				var inflated = pako.inflate(compressed);
+				var headerData = dataObject.IHDR;
+				
+				var scanline;
+				
+				var colors = 0;
+				
+				if(headerData.colorType == 3) colors = 1;
+				else console.warn("Unusual color type");
+				
+				var bpp = Math.max(1, colors * headerData.bitDepth / 8);
+				
+				var pixelData = [];
+				
+				var colorsPerRow = bpp * headerData.width;
+				
+				var subOffset = headerData.width * (headerData.height - 1);
+				
+				for(var i = 0; i < inflated.length; i += colorsPerRow + 1)
+				{
+					var method = inflated[i];
+					
+					scanline = inflated.slice(i + 1, i + colorsPerRow + 1);	
+					
+					if(method == 0)
+					{
+						for (var o = 0, to = colorsPerRow; o < to; o++){
+							pixelData[subOffset + o] = scanline[o];
+						}
+					}
+					else console.warn("Unknown method:",method);
+					
+					subOffset -= colorsPerRow;
+				}
+				
+				dataObject.IDAT = pixelData;
+			}
+		}
+		else if(fileType == "jpeg")
+		{
+			offset += 2;
+			while(offset < dataView.byteLength)
+			{
+				var byteID = dataView.getUint8(offset);
+				offset++;
+				var segmentType = dataView.getUint8(offset);
+				if(segmentType == 0xd9) break;
+				offset++;
+				var byteCount = dataView.getUint16(offset);
+				offset += 2;
+				var segmentID = "";
+				if(segmentType >= 0xe0 && segmentType <= 0xef) segmentID = "APP" + (segmentType - 0xe0);
+				else segmentID = JPEGSegmentTable[segmentType];
+				if(segmentID == "SOS")
+				{
+					if(!dataObject[segmentID]) dataObject[segmentID] = [];
+					var newSegment = {};
+					var componentCount = dataView.getUint8(offset++);
+					newSegment.components = [];
+					for(var c = 0; c < componentCount; c++)
+					{
+						newSegment.components[c] = {componentId: dataView.getUint8(offset), table: dataView.getUint8(offset + 1)};
+						offset += 2;
+					}
+										
+					while(!(dataView.getUint8(offset) == 0xff && dataView.getUint8(offset + 1) != 0x00))
+					{
+						offset++;
+					}
+					
+					dataObject[segmentID].push(newSegment);
+				}
+				else if(segmentID == "APP14")
+				{
+					if(!dataObject[segmentID]) dataObject[segmentID] = [];
+					
+					var newSegment = {};
+					
+					newSegment.IDMark = bytesToString(getBytes(dataView.buffer,offset,5));
+					offset += 5;
+					newSegment.version = dataView.getUint16(offset);
+					offset += 2;
+					newSegment.flags0 = dataView.getUint16(offset);
+					offset += 2;
+					newSegment.flags1 = dataView.getUint16(offset);
+					offset += 2;
+					newSegment.transformCode = dataView.getUint8(offset);
+					offset++;
+										
+					dataObject[segmentID].push(newSegment);
+				}
+				else if(segmentID.includes("APP"))
+				{
+					if(!dataObject[segmentID]) dataObject[segmentID] = [];
+					
+					var newSegment = {};
+					var subOffset = 0;
+										
+					newSegment.IDMark = bytesToString(getBytes(dataView.buffer,offset + subOffset,5));
+					//console.log(newSegment.IDMark,getBytes(dataView.buffer,offset + subOffset,5));
+					console.log(newSegment.IDMark,getBytes(dataView.buffer,offset + subOffset,8));
+					subOffset += 5;
+					
+					if(newSegment.IDMark.includes("CWS2") || newSegment.IDMark.includes("CWS3"))
+					{
+						subOffset -= 5;
+						newSegment.IDMark = bytesToString(getBytes(dataView.buffer,offset + subOffset,4));
+						subOffset += 4;
+						newSegment = Object.assign(newSegment,parseCWSData(dataView.buffer.slice(offset + subOffset,offset + subOffset + byteCount - 2),newSegment.IDMark));
+						subOffset += byteCount - 2 - 4;
+					}
+					else if(newSegment.IDMark.includes("CWMAH"))
+					{
+						subOffset -= 5;
+						newSegment.IDMark = bytesToString(getBytes(dataView.buffer,offset + subOffset,8));
+						subOffset += 8;
+						//var blob = new Blob( [ dataView.buffer.slice(offset + subOffset,offset + subOffset + byteCount - 2) ], { type: "image/png" } );
+						//console.log(window.URL.createObjectURL(blob));
+						//subOffset += 5;
+						
+						var mask = getBytes(dataView.buffer,offset + subOffset,byteCount - 2 - subOffset);
+												
+						console.log(mask);
+					}
+					
+					newSegment.remainder = getBytes(dataView.buffer,offset + subOffset,byteCount - 2 - subOffset);
+										
+					dataObject[segmentID].push(newSegment);
+					
+					console.log(newSegment.remainder.length);
+					
+					offset += subOffset + newSegment.remainder.length;
+				}
+				else if(segmentID.includes("SOF2"))
+				{
+					if(!dataObject[segmentID]) dataObject[segmentID] = [];
+					
+					var newSegment = {};
+					
+					newSegment.bitsPerSample = dataView.getUint8(offset);
+					offset++;
+					newSegment.height = dataView.getUint16(offset);
+					offset += 2;
+					newSegment.width = dataView.getUint16(offset);
+					offset += 2;
+					newSegment.componentCount = dataView.getUint8(offset);
+					offset++;
+					newSegment.components = [];
+					for(var c = 0; c < newSegment.componentCount; c++)
+					{
+						newSegment.components[c] = {componentId: dataView.getUint8(offset), samplingFactors: dataView.getUint8(offset + 1), tableNumber: dataView.getUint8(offset + 2)};
+						offset += 3;
+					}
+					
+					dataObject[segmentID].push(newSegment);				
+				}
+				else
+				{
+					if(!dataObject[segmentID]) dataObject[segmentID] = [];
+					var newSegment = getBytes(dataView.buffer,offset,byteCount - 2);
+					dataObject[segmentID].push(newSegment);
+					offset += byteCount - 2;
+				}
+			}
+		}
+		
+		console.log(dataObject);
+		dataDisplay.innerHTML = "";
+		
+		var dataTable = createTable(dataObject);
+		dataTable.style.tableLayout = "fixed";
+		dataDisplay.appendChild(dataTable);
+		
+	}, false);
+
+	if (file)
+	{
+		reader.readAsArrayBuffer(file);
+	}
+}
+
+function parseCWSData(chunk,marker)
+{
+	var dataView = new DataView(chunk,0);
+	
+	var newSegment = {};
+	var offset = 0;
+	
+	newSegment.unknownThings = [];
+	newSegment.cellCount = getUint32(chunk, offset);
+	offset += 4;
+	newSegment.cellWidth = dataView.getUint32(offset,true);
+	offset += 4;
+	newSegment.cellHeight = getUint32(chunk, offset);
+	offset += 4;
+	newSegment.worldPositionZ = dataView.getUint32(offset,true);
+	offset += 4;
+	newSegment.worldPositionY = dataView.getUint32(offset,true);
+	offset += 4;
+	newSegment.worldPositionX = dataView.getUint32(offset,true);
+	offset += 4;
+	var otherSettings = (dataView.getUint32(offset,true)).toString(2);
+	while(otherSettings.length < 4) otherSettings = "0" + otherSettings;
+	offset += 4;
+	newSegment.unknownThings.push(otherSettings[0]);
+	newSegment.multiSided = otherSettings[1] == 1;
+	newSegment.enableMenuItem = otherSettings[2] == 0;
+	newSegment.unknownThings.push(otherSettings[3]);
+	newSegment.animateOnLoading = getUint32(chunk, offset) == 1;
+	offset += 4;
+	newSegment.sides = dataView.getUint32(offset,true);
+	offset += 4;
+	newSegment.worldWidth = getUint32(chunk, offset);
+	offset += 4;
+	newSegment.worldHeight = getUint32(chunk, offset);
+	offset += 4;
+	newSegment.repeatCount = dataView.getUint32(offset,true);
+	offset += 4;
+	newSegment.frameCount = dataView.getUint32(offset,true);
+	offset += 4;
+	newSegment.defaultDuration = dataView.getUint32(offset,true);
+	offset += 4;
+	var visibility = (dataView.getUint32(offset,true)).toString(2);
+	while(visibility.length < 4) visibility = "0" + visibility;
+	visibility = visibility.split("");
+	newSegment.visibilityOnNorth = visibility[0] == 1;
+	newSegment.visibilityOnSouth = visibility[1] == 1;
+	newSegment.visibilityOnWest = visibility[2] == 1;
+	newSegment.visibilityOnEast = visibility[3] == 1;
+	offset += 4;
+	newSegment.unknownThings.push(dataView.getUint32(offset,true));
+	offset += 4;
+	newSegment.frameDurations = [];
+	for(var f = 0; f < newSegment.frameCount; f++)
+	{
+		newSegment.frameDurations[f] = dataView.getUint32(offset,true);
+		offset += 4;
+	}
+	if(marker == "CWS3")
+	{
+		newSegment.distance = dataView.getUint32(offset,true);
+		offset += 4;
+		newSegment.unknownThings.push(dataView.getUint32(offset,true));
+		offset += 4;
+		newSegment.unknownThings.push(dataView.getUint32(offset,true));
+		offset += 4;
+		newSegment.unknownThings.push(dataView.getUint32(offset,true));
+		offset += 4;
+		newSegment.unknownThings.push(dataView.getUint32(offset,true));
+		offset += 4;
+		newSegment.generalFrames = {}
+		newSegment.generalFrames.from = dataView.getUint32(offset,true);
+		offset += 4;
+		newSegment.generalFrames.to = dataView.getUint32(offset,true);
+		offset += 4;
+		newSegment.generalFrames.repeat = dataView.getUint32(offset,true);
+		offset += 4;
+		newSegment.generalFrames.end = dataView.getInt32(offset,true);
+		offset += 4;
+		newSegment.unknownThings.push(dataView.getUint32(offset,true));
+		offset += 4;
+		newSegment.mouseOver = {}
+		newSegment.mouseOver.enabled = dataView.getUint32(offset,true) == 1;
+		offset += 4;
+		newSegment.mouseOver.from = dataView.getUint32(offset,true);
+		offset += 4;
+		newSegment.mouseOver.to = dataView.getUint32(offset,true);
+		offset += 4;
+		newSegment.mouseOver.repeat = dataView.getUint32(offset,true);
+		offset += 4;
+		newSegment.mouseOver.end = dataView.getInt32(offset,true);
+		offset += 4;
+		var revertOptions = (dataView.getUint32(offset,true)).toString(2);
+		while(revertOptions.length < 2) revertOptions = "0" + revertOptions;
+		newSegment.mouseOver.revertOnStop = revertOptions[0] == 1;
+		newSegment.mouseOver.revertOnExit = revertOptions[1] == 1;
+		offset += 4;
+		newSegment.mouseClick = {}
+		newSegment.mouseClick.enabled = dataView.getUint32(offset,true) == 1;
+		offset += 4;
+		newSegment.mouseClick.from = dataView.getUint32(offset,true);
+		offset += 4;
+		newSegment.mouseClick.to = dataView.getUint32(offset,true);
+		offset += 4;
+		newSegment.mouseClick.repeat = dataView.getUint32(offset,true);
+		offset += 4;
+		newSegment.mouseClick.end = dataView.getInt32(offset,true);
+		offset += 4;
+		var revertOptions = (dataView.getUint32(offset,true)).toString(2);
+		while(revertOptions.length < 2) revertOptions = "0" + revertOptions;
+		newSegment.mouseClick.revertOnStop = revertOptions[0] == 1;
+		newSegment.mouseClick.revertOnExit = revertOptions[1] == 1;
+		offset += 4;
+		newSegment.proximity = {};
+		newSegment.proximity.enabled = dataView.getUint32(offset,true) == 1;
+		offset += 4;
+		newSegment.proximity.from = dataView.getUint32(offset,true);
+		offset += 4;
+		newSegment.proximity.to = dataView.getUint32(offset,true);
+		offset += 4;
+		newSegment.proximity.repeat = dataView.getUint32(offset,true);
+		offset += 4;
+		newSegment.proximity.end = dataView.getInt32(offset,true);
+		offset += 4;
+		var revertOptions = (dataView.getUint32(offset,true)).toString(2);
+		while(revertOptions.length < 2) revertOptions = "0" + revertOptions;
+		newSegment.proximity.revertOnStop = revertOptions[0] == 1;
+		newSegment.proximity.revertOnExit = revertOptions[1] == 1;
+		offset += 4;
+	}
+	return newSegment;
+}
+
+function getUint32(data, offset)
+{
+	var intArray = new Uint32Array( data, offset, 1 );
+	
+	return intArray[ 0 ];
+}
+
+function createTable(object)
+{
+	var newTable = document.createElement("table");
+	newTable.border = 1;
+	for(var key in object) {
+		var row = newTable.insertRow(-1);
+		var keyCell = row.insertCell(0);
+		var valueCell = row.insertCell(1);
+		keyCell.innerHTML = formatString(key);
+		if(key == "IDAT")
+		{
+			var idatCanvas = document.createElement('canvas');
+			idatCanvas.width = object.IHDR.width;
+			idatCanvas.height = object.IHDR.height;
+			var ctx = idatCanvas.getContext('2d');
+			
+			for(var i = 0; i < object.IHDR.height; i++)
+			{
+				for(var f = 0; f < object.IHDR.width; f++)
+				{
+					var currentColor = object.PLTE[object[key][(object.IHDR.width * i) + f]];
+					if(!currentColor) console.log(f,i,(object.IHDR.width * i) + f);
+					ctx.fillStyle = "rgb("+currentColor.r+","+currentColor.g+","+currentColor.b+")";
+					ctx.fillRect(f,i,1,1);
+				}
+			}
+			valueCell.appendChild(idatCanvas);
+		}
+		else if((object[key] instanceof Int8Array || object[key] instanceof Uint8Array) && object[key].length > 36) valueCell.innerHTML = "(" + object[key].length + "-byte garbage)";
+		else if(key == "PLTE")
+		{
+			var colorTable = document.createElement("table");
+			for(var i = 0; i < object[key].length; i += 16)
+			{
+				var colorRow = colorTable.insertRow(-1);
+				for(var f = 0; f < 16; f++)
+				{
+					var currentColor = object[key][i + f];
+					var colorCell = colorRow.insertCell(-1);
+					colorCell.width = 10;
+					colorCell.height = 10;
+					colorCell.style.backgroundColor = "rgb(" + currentColor.r + "," + currentColor.g + "," + currentColor.b + ")";
+				}
+			}
+			
+			valueCell.innerHTML += colorTable.outerHTML;
+		}
+		//else if(Array.isArray(object[key])) valueCell.innerHTML += object[key];
+		else if(Array.isArray(object[key]) && typeof(object[key][0]) == "object")
+		{			
+			for(var i = 0; i < object[key].length; i++)
+			{
+				if(object[key][i] instanceof Int8Array || object[key][i] instanceof Uint8Array) valueCell.innerHTML += JSON.stringify(object[key][i]);
+				else valueCell.innerHTML += createTable(object[key][i]).outerHTML;
+			}
+		}
+		else if(Array.isArray(object[key]) && typeof(object[key][0]) != "object") valueCell.innerHTML = object[key];
+		else if(object[key] instanceof Object)
+		{
+			if(!(object[key] instanceof Int8Array || object[key] instanceof Uint8Array) && !(object[key] instanceof Array))
+			{
+				var objectTable = createTable(object[key]);
+				valueCell.innerHTML = objectTable.outerHTML;
+			}
+			else valueCell.innerHTML = JSON.stringify(object[key]);
+		}
+		else if(typeof object[key] == "string") valueCell.innerHTML = object[key];
+		else valueCell.innerHTML = JSON.stringify(object[key]);
+	}
+	return newTable;
+}
+
+function encodeHTML(text) {
+    var textarea = document.createElement("textarea");
+    textarea.innerHTML = text;
+    return textarea.innerHTML;
+}
+
+function bytesToString(stringBytes)
+{
+	var string = "";
+	for (var i = 0; i < stringBytes.length; i++)
+	{
+		string += String.fromCharCode(stringBytes[i]);
+	}
+	return string;
+}
+
+function formatString(string)
+{
+	string = string[0].toUpperCase() + string.substring(1);
+	string = string.replace(/([A-Z])/g, ' $1').replace("_"," ");
+	for(var i = 1; i < string.length; i++)
+	{
+		if(/[A-Z]/.test(string[i]) && /[A-Z]/.test(string[i + 2])) string = string.replace(/([A-Z]) ([A-Z])/, '$1$2');
+	}
+	return string;
+}
+
+function int8ToInt16(bytes)
+{
+  var array = new Uint16Array({length: bytes.byteLength / 2});
+  for(var i = 0; i < bytes.byteLength; i += 2)
+  {
+    array[(i / 2)] = (bytes[i] << 8) + bytes[i + 1];
+  }
+  return array;
+}
+
+function getBytes(buffer,offset,length)
+{
+	var bytes = new Uint8Array(buffer,offset,length);
+	return bytes;
+}
+</script>
+</body></html>

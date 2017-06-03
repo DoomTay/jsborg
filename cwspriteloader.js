@@ -247,11 +247,11 @@ CWSpriteLoader.prototype = {
 					var offset = 0;
 					
 					newSegment.unknownThings = [];
-					newSegment.cellCount = getUint32(chunk, offset);
+					newSegment.cellCount = dataView.getUint32(offset,true);
 					offset += 4;
 					newSegment.cellWidth = dataView.getUint32(offset,true);
 					offset += 4;
-					newSegment.cellHeight = getUint32(chunk, offset);
+					newSegment.cellHeight = dataView.getUint32(offset,true);
 					offset += 4;
 					newSegment.worldPositionZ = dataView.getUint32(offset,true);
 					offset += 4;
@@ -267,13 +267,13 @@ CWSpriteLoader.prototype = {
 					//Yes, 0 means it's enabled
 					newSegment.enableMenuItem = otherSettings[2] == 0;
 					newSegment.unknownThings.push(otherSettings[3]);
-					newSegment.animateOnLoading = getUint32(chunk, offset) == 1;
+					newSegment.animateOnLoading = dataView.getUint32(offset,true) == 1;
 					offset += 4;
 					newSegment.sides = dataView.getUint32(offset,true);
 					offset += 4;
-					newSegment.worldWidth = getUint32(chunk, offset);
+					newSegment.worldWidth = dataView.getUint32(offset,true);
 					offset += 4;
-					newSegment.worldHeight = getUint32(chunk, offset);
+					newSegment.worldHeight = dataView.getUint32(offset,true);
 					offset += 4;
 					newSegment.repeatCount = dataView.getUint32(offset,true);
 					offset += 4;
@@ -299,8 +299,7 @@ CWSpriteLoader.prototype = {
 					}
 					if(marker == "CWS3")
 					{
-						newSegment.distance = dataView.getUint32(offset,true);
-						offset += 4;
+						newSegment.distance = dataView.getUint32(offset += 4,true);
 						newSegment.unknownThings.push(dataView.getUint32(offset,true));
 						offset += 4;
 						newSegment.unknownThings.push(dataView.getUint32(offset,true));
@@ -370,13 +369,6 @@ CWSpriteLoader.prototype = {
 						offset += 4;
 					}
 					return newSegment;
-				}
-				
-				function getUint32(data, offset)
-				{
-					var intArray = new Uint32Array( data, offset, 1 );
-					
-					return intArray[ 0 ];
 				}
 				
 				function getBytes(buffer,offset,length)

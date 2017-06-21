@@ -68,7 +68,7 @@
 		var nav = document.getElementById("nav");
 		var sidePanel = document.getElementById("sidePanel");
 		sidePanel.src = "PKMNSide.html";
-		var player = new THREE.Mesh( new THREE.BoxGeometry(SCALE / 4, SCALE / 4, SCALE / 4), new THREE.MeshBasicMaterial({ visible:false}) );
+		var player = new THREE.Mesh(new THREE.BoxGeometry(SCALE / 4, SCALE / 4, SCALE / 4), new THREE.MeshBasicMaterial({ visible:false}));
 		var playerIndicator = document.getElementById("playerPos");
 		var audioCtx = new AudioContext();
 		var keyboard = new KeyboardState();
@@ -78,7 +78,7 @@
 		var scene = new THREE.Scene();
 		var currentMusic = "";
 		
-		var omniSound = new THREE.Audio( listener );
+		var omniSound = new THREE.Audio(listener);
 		
 		function loadBorg()
 		{
@@ -89,7 +89,7 @@
 			reader.addEventListener("load", function(e)
 			{
 				borgDisplay.innerHTML = "";
-				var contents = ( new DOMParser() ).parseFromString( e.target.result, "text/xml" ).childNodes[0];
+				var contents = (new DOMParser() ).parseFromString( e.target.result, "text/xml").childNodes[0];
 				borg = parseBorg(contents);
 				console.log(file);
 				emb.style.backgroundImage = "url('" + borgPath + "domains/" + borg.emb + "')";
@@ -106,14 +106,14 @@
 				
 				scene = new THREE.Scene();
 				
-				player = new THREE.Mesh( new THREE.BoxGeometry(SCALE / 4, SCALE / 4, SCALE / 4), new THREE.MeshBasicMaterial({ visible:false}) );
+				player = new THREE.Mesh(new THREE.BoxGeometry(SCALE / 4, SCALE / 4, SCALE / 4), new THREE.MeshBasicMaterial({ visible:false}));
 				player.position.x = playerX * SCALE - (SCALE / 2);
 				player.position.z = playerY * SCALE - (SCALE / 2);
 				player.position.y = (SCALE / 8) - 32 + height;
 				scene.add(player);
 				var playerTrigger = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
 				
-				var camera = new THREE.PerspectiveCamera( windowWidth / 17, windowWidth / windowHeight, 0.1, 4000 );
+				var camera = new THREE.PerspectiveCamera(windowWidth / 17, windowWidth / windowHeight, 0.1, 4000);
 				camera.rotation.order = "YXZ";
 				camera.rotation.y = angle * (Math.PI/180);
 				player.add(camera);
@@ -190,19 +190,19 @@
 				
 				changeGTW2(borg.defaultPage);
 				
-				renderer.domElement.addEventListener( 'mousemove', onMouseMove, false );
+				renderer.domElement.addEventListener('mousemove', onMouseMove, false);
 				
-				function onMouseMove( event )
+				function onMouseMove(event)
 				{
 					var offset = event.target.getBoundingClientRect();
-					mouse.x = ( (event.clientX - offset.left) / windowWidth ) * 2 - 1;
-					mouse.y = - ( (event.clientY - offset.top) / windowHeight ) * 2 + 1;
+					mouse.x = ((event.clientX - offset.left) / windowWidth) * 2 - 1;
+					mouse.y = - ((event.clientY - offset.top) / windowHeight) * 2 + 1;
 				}
 				
-				function onMouseClick( event )
+				function onMouseClick(event)
 				{
-					onMouseMove( event );
-					/*var mouseOvers = raycaster.intersectObjects( mouseTriggers,true );
+					onMouseMove(event);
+					/*var mouseOvers = raycaster.intersectObjects(mouseTriggers,true);
 					if(mouseOvers.length > 0)
 					{
 						var clickedOn = mouseOvers[0].object;
@@ -216,14 +216,14 @@
 					}
 				}
 				
-				renderer.domElement.addEventListener( 'click', onMouseClick, false );
+				renderer.domElement.addEventListener('click', onMouseClick, false);
 				
 				var occupiedTriggers = [];
 				
 				function getMousedOverElement()
 				{
 					//A small trick to ensure that if the mouse is over an object that happens to be in front of a mouseTrigger, that mouseTrigger will not be detected
-					var mouseOvers = raycaster.intersectObjects( scene.children,true );
+					var mouseOvers = raycaster.intersectObjects(scene.children,true);
 					
 					var mouseOver = mouseOvers.find((hit) => mouseTriggers.includes(hit.object) || mouseTriggers.includes(hit.object.parent));
 					//var mouseOver = mouseOvers[0];
@@ -234,8 +234,9 @@
 				
 				var prevTime;
 				
-				function render(time) {
-					requestAnimationFrame( render );
+				function render(time)
+				{
+					requestAnimationFrame(render);
 					
 					var delta = time - prevTime;
 						
@@ -246,9 +247,9 @@
 					
 					var sprites = scene.children.filter(child => child.type == "Sprite" || child.type == "SpriteOnWall");
 					
-					raycaster.setFromCamera( mouse, camera );
+					raycaster.setFromCamera(mouse, camera);
 					
-					/*var mouseOvers = raycaster.intersectObjects( mouseTriggers ).filter(function(hit)
+					/*var mouseOvers = raycaster.intersectObjects(mouseTriggers).filter(function(hit)
 					{
 						if(hit.object.type == "Sprite")
 						{
@@ -335,14 +336,14 @@
 					
 					var originPoint = player.position.clone();
 					
-					for (var v = 0; v < player.geometry.vertices.length; v++)
+					for(var v = 0; v < player.geometry.vertices.length; v++)
 					{       
 						var localVertex = player.geometry.vertices[v].clone();
-						var globalVertex = localVertex.applyMatrix4( player.matrix );
-						var directionVector = globalVertex.sub( player.position );
+						var globalVertex = localVertex.applyMatrix4(player.matrix);
+						var directionVector = globalVertex.sub(player.position);
 						
-						var ray = new THREE.Raycaster( originPoint, directionVector.clone().normalize() );
-						var collisionResults = ray.intersectObjects( walls );
+						var ray = new THREE.Raycaster(originPoint, directionVector.clone().normalize());
+						var collisionResults = ray.intersectObjects(walls);
 						
 						collisionResults.map(result =>
 						{
@@ -355,8 +356,8 @@
 						})
 					}
 										
-					var triggerRay = new THREE.Raycaster( originPoint, new THREE.Vector3(0,-1,0) );
-					var steppingOnTriggers = triggerRay.intersectObjects( triggers ).map(hit => hit.object);
+					var triggerRay = new THREE.Raycaster(originPoint, new THREE.Vector3(0,-1,0));
+					var steppingOnTriggers = triggerRay.intersectObjects(triggers).map(hit => hit.object);
 										
 					var steppedOffTriggers = triggers.filter(trigger => !steppingOnTriggers.includes(trigger) && occupiedTriggers.includes(trigger) && trigger.triggered == true);
 					
@@ -394,7 +395,7 @@
 					renderer.autoClear = false;
 					renderer.clear();
 					renderer.render(bgScene, bgCam);
-					renderer.render( scene, camera );
+					renderer.render(scene, camera);
 				}
 				render();
 				
@@ -427,7 +428,7 @@
 			return new Promise(function(resolve,reject)
 			{
 				var test = new XMLHttpRequest();
-				test.onload = function () {
+				test.onload = function() {
 					console.log(this.response);
 					var path = this.response.match(/URL=(.+)/)[1];
 					if(path.startsWith("file:")) path = path.substring(8);

@@ -4,7 +4,7 @@
 </head>
 
 <body>
-<input onchange="previewFile()" type="file"><br>
+<input onchange="previewFile()" type="file" accept=".tor"><br>
 <div id="dataDisplay"></div>
 <script type="text/javascript">
 var metadata = "";
@@ -12,6 +12,7 @@ var metadata = "";
 function previewFile()
 {
 	var file    = document.querySelector('input[type=file]').files[0];
+	console.log(document.querySelector('input[type=file]'));
 	var reader  = new FileReader();
 
 	reader.addEventListener("load", function()
@@ -20,15 +21,11 @@ function previewFile()
 		
 		var dataDisplay = document.getElementById("dataDisplay");
 		var dataView = new DataView(reader.result);
-		var length = dataView.getUint32(4,true) - 4;
 		offset = 0;
 		var dataObject = {};
-		while(offset < length)
-		{
-			offset++;
-		}
 		
-		dataObject.stream = new Uint8Array(reader.result);
+		dataObject.fileSignature = bytesToString(getBytes(dataView,0,5));
+		dataObject.stream = new Uint8Array(reader.result,5);
 		
 		console.log(dataObject);
 		dataDisplay.innerHTML = "";
@@ -60,25 +57,7 @@ function createTable(object)
 		var keyCell = row.insertCell(0);
 		var valueCell = row.insertCell(1);
 		keyCell.innerHTML = formatString(key);
-		if(key == "entries")
-		{
-			var colorTable = document.createElement("table");
-			for(var i = 0; i < object[key].length; i += 16)
-			{
-				var colorRow = colorTable.insertRow(-1);
-				for(var f = 0; f < 16; f++)
-				{
-					var currentColor = object[key][i + f];
-					var colorCell = colorRow.insertCell(-1);
-					colorCell.width = 10;
-					colorCell.height = 10;
-					colorCell.style.backgroundColor = "rgb(" + currentColor.r + "," + currentColor.g + "," + currentColor.b + ")";
-				}
-			}
-			
-			valueCell.innerHTML += colorTable.outerHTML;
-		}
-		else if((object[key] instanceof Int8Array || object[key] instanceof Uint8Array) && object[key].length > 36) valueCell.innerHTML = "(" + object[key].length + "-byte garbage)";
+		if((object[key] instanceof Int8Array || object[key] instanceof Uint8Array) && object[key].length > 36) valueCell.innerHTML = "(" + object[key].length + "-byte garbage)";
 		else if(Array.isArray(object[key]) && typeof(object[key][0]) == "object")
 		{
 			{

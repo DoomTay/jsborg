@@ -1,13 +1,13 @@
-function CWSpriteLoader( manager ) {
-	this.manager = ( manager !== undefined ) ? manager : THREE.DefaultLoadingManager;
+function CWSpriteLoader(manager) {
+	this.manager = (manager !== undefined) ? manager : THREE.DefaultLoadingManager;
 }
 
-CWSpriteLoader.prototype = {
-	
+CWSpriteLoader.prototype =
+{
 	constructor: CWSpriteLoader,
 
-	load: function ( url, onLoad, onProgress, onError ) {
-		
+	load: function(url, onLoad, onProgress, onError)
+	{
 		var additionalData = {};
 		additionalData.worldPositionX = 128;
 		additionalData.worldPositionY = 128;
@@ -26,10 +26,11 @@ CWSpriteLoader.prototype = {
 		var fileLoader = new THREE.FileLoader(this.manager);
 		if(url.endsWith(".sprite"))
 		{
-			fileLoader.setResponseType( 'arraybuffer' );
+			fileLoader.setResponseType('arraybuffer');
 			fileLoader.load(
 			url,
-			function ( data ) {
+			function(data)
+			{
 				var dataView = new DataView(data);
 				
 				var fileType = "";
@@ -74,10 +75,7 @@ CWSpriteLoader.prototype = {
 							additionalData = Object.assign(additionalData,parseCWSData(dataView.buffer.slice(offset,offset + byteCount),marker.marker));
 							offset += byteCount - 4;
 						}
-						else
-						{
-							offset += byteCount;
-						}
+						else offset += byteCount;
 						offset += 4;
 					}
 					
@@ -201,13 +199,10 @@ CWSpriteLoader.prototype = {
 							newSegment.remainder = getBytes(dataView.buffer,offset + subOffset,byteCount - 2 - subOffset);
 							offset += subOffset + newSegment.remainder.length;
 						}
-						else
-						{
-							offset += byteCount - 2;
-						}
+						else offset += byteCount - 2;
 					}
 					
-					var blob = new Blob( [ dataView.buffer ], { type: "image/jpeg" } );
+					var blob = new Blob([ dataView.buffer ], { type: "image/jpeg" });
 					
 					var transparentSprite = document.createElement('canvas');
 					transparentSprite.width = additionalData.cellWidth || additionalData.worldWidth;
@@ -391,7 +386,7 @@ CWSpriteLoader.prototype = {
 		{
 			fileLoader.load(
 			url,
-			function ( data ) {				
+			function(data) {				
 				var dataBits = data.split("\r\n");
 								
 				var dataObject = {};
@@ -450,11 +445,12 @@ CWSpriteLoader.prototype = {
 			var spriteTex = new THREE.Texture();
 			
 			var image = new Image();
-			image.onload = function () {
+			image.onload = function()
+			{
 				spriteTex.image = image;
 				spriteTex.needsUpdate = true;
 				
-				var material = new THREE.SpriteMaterial({ map: spriteTex, alphaTest: 0.5 });
+				var material = new THREE.SpriteMaterial({map: spriteTex, alphaTest: 0.5});
 				
 				material.CWSData = additionalData;
 				
@@ -464,9 +460,7 @@ CWSpriteLoader.prototype = {
 				material.map.repeat.y = 1/additionalData.frameCount;
 				material.map.offset.y = 0;
 				
-				if (onLoad !== undefined) {
-					onLoad( material );
-				}
+				if (onLoad !== undefined) onLoad(material);
 			};
 			image.src = newURL;
 		}
@@ -486,30 +480,23 @@ CWSpriteLoader.prototype = {
 			material.map.repeat.y = 1/additionalData.frameCount;
 			material.map.offset.y = 0;
 			
-			if ( onLoad !== undefined ) {
-				onLoad( material );
-			}
+			if (onLoad !== undefined) onLoad(material);
 		}
 	},
 
-	setCrossOrigin: function ( value ) {
-
+	setCrossOrigin: function(value)
+	{
 		this.crossOrigin = value;
 		return this;
-
 	},
 
-	setWithCredentials: function ( value ) {
-
+	setWithCredentials: function(value) {
 		this.withCredentials = value;
 		return this;
-
 	},
 
-	setPath: function ( value ) {
-
+	setPath: function(value) {
 		this.path = value;
 		return this;
-
 	}
 };

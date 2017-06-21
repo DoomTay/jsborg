@@ -4,7 +4,7 @@
 </head>
 
 <body>
-<input onchange="previewFile()" type="file"><br>
+<input onchange="previewFile()" type="file" accept=".sprite"><br>
 <div id="dataDisplay"></div>
 <script src="pako.js"></script>
 <script type="text/javascript">
@@ -312,10 +312,7 @@ function previewFile()
 		
 	}, false);
 
-	if (file)
-	{
-		reader.readAsArrayBuffer(file);
-	}
+	if (file) reader.readAsArrayBuffer(file);
 }
 
 function parseCWSData(chunk,marker)

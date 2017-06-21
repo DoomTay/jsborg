@@ -4,8 +4,8 @@ var SCALE = 256;
 //The path of the submitted .borg file relative to the main page. Needed because we will need to load other files that are descended from this path
 //Is it possible to get the path of a submitted file without having to hardcode it? Probably not without disabling important security settings.
 //var borgPath = "compiledtest/";
-//var borgPath = "p2kfixed/game/borgs/";
-var borgPath = "zeta/borgs/"
+var borgPath = "p2kfixed/game/borgs/";
+//var borgPath = "zeta/borgs/"
 //var borgPath = "Gallery/worlds/olympiad/"
 var triggers = [];
 var walls = [];
@@ -98,7 +98,6 @@ function parseCoords(set)
 	for(var i = 0; i < array.length; i++)
 	{
 		var numRef = parseInt(array[i].substring(array[i].length - 2),16);
-		
 		var repeat = parseInt(array[i].substring(0,array[i].length - 2),16);
 		
 		for(var o = 0; o < repeat; o++)
@@ -123,16 +122,19 @@ function loadTexture(tex)
 	{
 		loader.load(
 			tex,
-			function ( texture ) {
+			function(texture)
+			{
 				texture.magFilter = THREE.NearestFilter;
 				texture.minFilter = THREE.NearestFilter;
 				resolve(texture);
 			},
-			function ( xhr ) {
-				console.log( (xhr.loaded / xhr.total * 100) + '% loaded' );
+			function(xhr)
+			{
+				console.log((xhr.loaded / xhr.total * 100) + '% loaded');
 			},
-			function ( xhr ) {
-				reject( tex + " could not be loaded" );
+			function(xhr)
+			{
+				reject(tex + " could not be loaded");
 			}
 		);
 	});
@@ -154,13 +156,13 @@ function makeSpriteMaterial(spritePath)
 	{
 		//Digging the sprite graphic for important things like size and frame count
 		new CWSpriteLoader().load(spritePath,
-		function ( spriteMaterial ) {
-			resolve(spriteMaterial);
+		resolve,
+		function(xhr)
+		{
+			console.log(spritePath,(xhr.loaded / xhr.total * 100) + '% loaded');
 		},
-		function ( xhr ) {
-			console.log( spritePath,(xhr.loaded / xhr.total * 100) + '% loaded' );
-		},
-		function ( xhr ) {
+		function(xhr)
+		{
 			console.warn(spritePath,"cannot be loaded");
 			
 			var additionalData = {};
@@ -185,21 +187,21 @@ function makeSpriteMaterial(spritePath)
 
 function FloorTile(material)
 {
-	this.geometry = new THREE.PlaneGeometry( SCALE, SCALE );
+	this.geometry = new THREE.PlaneGeometry(SCALE, SCALE);
 	this.material = material;
 	
-	THREE.Mesh.call( this, this.geometry, this.material );
+	THREE.Mesh.call(this, this.geometry, this.material);
 	this.type = "FloorTile";
 	this.rotateX(-Math.PI / 2);
 }
 
-FloorTile.prototype = Object.create( THREE.Mesh.prototype );
+FloorTile.prototype = Object.create(THREE.Mesh.prototype);
 FloorTile.prototype.constructor = FloorTile;
 
 function WallBlock(material,height)
 {
-	var wallPlane = new THREE.PlaneGeometry( height, SCALE );
-	THREE.Group.call( this );
+	var wallPlane = new THREE.PlaneGeometry(height, SCALE);
+	THREE.Group.call(this);
 	this.type = "WallBlock";
 	
 	var newMaterial = material.clone();
@@ -212,42 +214,42 @@ function WallBlock(material,height)
 		newMaterial.map.repeat.x = height/1024;
 	}
 		
-	var nMesh = new THREE.Mesh( wallPlane, newMaterial );
+	var nMesh = new THREE.Mesh(wallPlane, newMaterial);
 	nMesh.position.z = SCALE * -0.5;
 	nMesh.position.y = height / 2;
 	nMesh.rotateZ(-Math.PI / 2);
 	nMesh.rotateY(Math.PI);
-	this.add( nMesh );
+	this.add(nMesh);
 	
-	var wMesh = new THREE.Mesh( wallPlane, newMaterial );
+	var wMesh = new THREE.Mesh(wallPlane, newMaterial);
 	wMesh.position.x = SCALE * -0.5;
 	wMesh.position.y = height / 2;
 	wMesh.rotateX(-Math.PI / 2);
 	wMesh.rotateY(Math.PI * -0.5);
-	this.add( wMesh );
+	this.add(wMesh);
 	
-	var eMesh = new THREE.Mesh( wallPlane, newMaterial );
+	var eMesh = new THREE.Mesh(wallPlane, newMaterial);
 	eMesh.position.x = SCALE * 0.5;
 	eMesh.position.y = height / 2;
 	eMesh.rotateX(Math.PI / 2);
 	eMesh.rotateY(Math.PI * 0.5);
-	this.add( eMesh );
+	this.add(eMesh);
 	
-	var sMesh = new THREE.Mesh( wallPlane, newMaterial );
+	var sMesh = new THREE.Mesh(wallPlane, newMaterial);
 	sMesh.position.z = SCALE * 0.5;
 	sMesh.position.y = height / 2;
 	sMesh.rotateZ(Math.PI / 2);
-	this.add( sMesh );
+	this.add(sMesh);
 }
 
-WallBlock.prototype = Object.create( THREE.Group.prototype );
+WallBlock.prototype = Object.create(THREE.Group.prototype);
 WallBlock.prototype.constructor = WallBlock;
 
 function PlayerTrigger(triggerClass,onEnter,onLeave)
 {
-	this.geometry = new THREE.PlaneGeometry( SCALE, SCALE );
+	this.geometry = new THREE.PlaneGeometry(SCALE, SCALE);
 	
-	THREE.Mesh.call( this, this.geometry, new THREE.MeshBasicMaterial({visible:false}) );
+	THREE.Mesh.call(this, this.geometry, new THREE.MeshBasicMaterial({visible:false}));
 	this.type = "PlayerTrigger";
 	this.rotateX(-Math.PI / 2);
 	triggers.push(this);
@@ -330,13 +332,13 @@ function PlayerTrigger(triggerClass,onEnter,onLeave)
 	}
 }
 
-PlayerTrigger.prototype = Object.create( THREE.Mesh.prototype );
+PlayerTrigger.prototype = Object.create(THREE.Mesh.prototype);
 PlayerTrigger.prototype.constructor = PlayerTrigger;
 
 function generateMap(scene,borgData,textureData)
 {
-	var planeGeom = new THREE.PlaneGeometry( SCALE, SCALE );
-	var wallGeom = new THREE.BoxGeometry( SCALE, borgData.height * 4, SCALE);
+	var planeGeom = new THREE.PlaneGeometry(SCALE, SCALE);
+	var wallGeom = new THREE.BoxGeometry(SCALE, borgData.height * 4, SCALE);
 	var invisibleMaterial = new THREE.MeshBasicMaterial({visible:false});
 	
 	for(var y = -1; y < 17; y++)
@@ -345,7 +347,7 @@ function generateMap(scene,borgData,textureData)
 		{
 			if((y == -1 || y == 16) || ((y > -1 && y < 16) && (x == -1 || x == 16)))
 			{
-				var wall = new THREE.Mesh( wallGeom, invisibleMaterial );
+				var wall = new THREE.Mesh(wallGeom, invisibleMaterial);
 				wall.position.x = (SCALE * x);
 				wall.position.z = (SCALE * y);
 				wall.position.y = ((borgData.height * 4) / 2);
@@ -362,21 +364,21 @@ function generateMap(scene,borgData,textureData)
 			if(textureData.floors && borgData.grid[y][x]["FLOOR"] != 255)
 			{
 				var floorMaterial = textureData.floors[borgData.grid[y][x]["FLOOR"]];
-				var plane = new FloorTile( floorMaterial );
+				var plane = new FloorTile(floorMaterial);
 				plane.position.x = SCALE * x;
 				plane.position.z = SCALE * y;
-				scene.add( plane );
+				scene.add(plane);
 			}
 			if(textureData.ceilings && borgData.grid[y][x]["CEILING"] != 255)
 			{
 				ceilingMaterial = textureData.ceilings[borgData.grid[y][x]["CEILING"]];
-				var plane = new THREE.Mesh( planeGeom, ceilingMaterial );
+				var plane = new THREE.Mesh(planeGeom, ceilingMaterial);
 				plane.position.x = SCALE * x;
 				plane.position.z = SCALE * y;
 				plane.position.y = borg.height * 4;
 				plane.rotateX(Math.PI / 2);
 				plane.rotateZ(Math.PI);
-				scene.add( plane );
+				scene.add(plane);
 			}
 			if(borgData.grid[y][x]["SPRITE"])
 			{
@@ -400,7 +402,7 @@ function generateMap(scene,borgData,textureData)
 					sprite.type = "SpriteOnWall";
 					sprite.position.x = (SCALE * x);
 					sprite.position.z = (SCALE * y);
-					var spritePlane = new THREE.PlaneGeometry( SCALE, spriteMaterial.CWSData.cellHeight );
+					var spritePlane = new THREE.PlaneGeometry(SCALE, spriteMaterial.CWSData.cellHeight);
 					
 					var expandedTexture = document.createElement('canvas');
 					expandedTexture.width = SCALE;
@@ -449,41 +451,41 @@ function generateMap(scene,borgData,textureData)
 					
 					if(spritePlaneMaterial.CWSData.visibilityOnNorth)
 					{
-						var nMesh = new THREE.Mesh( spritePlane, spritePlaneMaterial );
+						var nMesh = new THREE.Mesh(spritePlane, spritePlaneMaterial);
 						nMesh.position.z = (SCALE * -0.5);
 						nMesh.position.y = spritePlaneMaterial.CWSData.cellHeight / 2;
 						nMesh.position.y += spritePlaneMaterial.CWSData.worldPositionZ - 1;
 						nMesh.rotateY(Math.PI);
-						sprite.add( nMesh );
+						sprite.add(nMesh);
 					}
 					
 					if(spritePlaneMaterial.CWSData.visibilityOnWest)
 					{
-						var wMesh = new THREE.Mesh( spritePlane, spritePlaneMaterial );
+						var wMesh = new THREE.Mesh(spritePlane, spritePlaneMaterial);
 						wMesh.position.x = SCALE * -0.5;
 						wMesh.position.y = spritePlaneMaterial.CWSData.cellHeight / 2;
 						wMesh.position.y += spritePlaneMaterial.CWSData.worldPositionZ - 1;
 						wMesh.rotateY(Math.PI * -0.5);
-						sprite.add( wMesh );
+						sprite.add(wMesh);
 					}
 					
 					if(spritePlaneMaterial.CWSData.visibilityOnEast)
 					{
-						var eMesh = new THREE.Mesh( spritePlane, spritePlaneMaterial );
+						var eMesh = new THREE.Mesh(spritePlane, spritePlaneMaterial);
 						eMesh.position.x = SCALE * 0.5;
 						eMesh.position.y = spritePlaneMaterial.CWSData.cellHeight / 2;
 						eMesh.position.y += spritePlaneMaterial.CWSData.worldPositionZ - 1;
 						eMesh.rotateY(Math.PI * 0.5);
-						sprite.add( eMesh );
+						sprite.add(eMesh);
 					}
 					
 					if(spritePlaneMaterial.CWSData.visibilityOnSouth)
 					{
-						var sMesh = new THREE.Mesh( spritePlane, spritePlaneMaterial );
+						var sMesh = new THREE.Mesh(spritePlane, spritePlaneMaterial);
 						sMesh.position.z = SCALE * 0.5;
 						sMesh.position.y = spritePlaneMaterial.CWSData.cellHeight / 2;
 						sMesh.position.y += spritePlaneMaterial.CWSData.worldPositionZ - 1;
-						sprite.add( sMesh );
+						sprite.add(sMesh);
 					}
 				}
 				
@@ -492,7 +494,7 @@ function generateMap(scene,borgData,textureData)
 				sprite.material.currentDisplayTime = 0;
 				sprite.material.currentTile = 0;
 								
-				sprite.material.update = function( milliSec,direction )
+				sprite.material.update = function(milliSec,direction)
 				{
 					if(this.CWSData.animateOnLoading)
 					{
@@ -518,7 +520,7 @@ function generateMap(scene,borgData,textureData)
 			}
 			if(borgData.grid[y][x]["NOWALK"] > 0)
 			{
-				var wall = new THREE.Mesh( wallGeom, invisibleMaterial );
+				var wall = new THREE.Mesh(wallGeom, invisibleMaterial);
 				wall.position.x = (SCALE * x);
 				wall.position.z = (SCALE * y);
 				wall.position.y = ((borgData.height * 4) / 2);
@@ -562,9 +564,11 @@ function generateMap(scene,borgData,textureData)
 				
 				console.log(textureData.sounds);
 				
-				var triggerBox = new PlayerTrigger(soundRef,function() {
+				var triggerBox = new PlayerTrigger(soundRef,function()
+				{
 					getSoundChild(this).switchToAmbient();
-				},function(collider) {
+				},function(collider)
+				{
 					var currentAudio = getSoundChild(this);
 					currentAudio.switchToPositional();
 					var currentTime = currentAudio.getTimecode();
@@ -588,7 +592,7 @@ function generateMap(scene,borgData,textureData)
 				triggerBox.position.z = SCALE * y;
 				scene.add(triggerBox);
 				
-				var soundObject = new THREE.PositionalAudio( listener );
+				var soundObject = new THREE.PositionalAudio(listener);
 								
 				soundObject.setBuffer(textureData.sounds[borgData.grid[y][x]["SOUND"] - 1]);
 				soundObject.setRefDistance(1);
@@ -605,7 +609,8 @@ function generateMap(scene,borgData,textureData)
 					this.beginningTime = this.context.currentTime - this.startTime;
 				}
 				
-				soundObject.getTimecode = function() {
+				soundObject.getTimecode = function()
+				{
 					if(this.beginningTime && this.source.buffer)
 					{
 						var endTime = this.context.currentTime;
@@ -690,11 +695,11 @@ function generateMap(scene,borgData,textureData)
 				}
 				
 				
-				var plane = new THREE.Mesh( planeGeom, invisibleMaterial );
+				var plane = new THREE.Mesh(planeGeom, invisibleMaterial);
 				plane.position.x = SCALE * x;
 				plane.position.z = SCALE * y;
 				plane.rotateX(-Math.PI / 2);
-				scene.add( plane );
+				scene.add(plane);
 				mouseTriggers.push(plane);
 				plane.onClick = onClick;
 				
@@ -718,12 +723,12 @@ function generateMap(scene,borgData,textureData)
 	//Backup plan if the floor textures cannot be loaded
 	if(!textureData.floors && borgData.grid.some(gridY => gridY.some(gridX => gridX["FLOOR"] != 255)))
 	{
-		var floorBackup = new THREE.Mesh( new THREE.PlaneGeometry( SCALE * 16, SCALE * 16 ), new THREE.MeshBasicMaterial({map:loader.load(borgPath + "domains/" + borgData.nav)}) );
+		var floorBackup = new THREE.Mesh(new THREE.PlaneGeometry(SCALE * 16, SCALE * 16), new THREE.MeshBasicMaterial({map:loader.load(borgPath + "domains/" + borgData.nav)}));
 		floorBackup.rotateX(-Math.PI / 2);
 		floorBackup.position.x = SCALE * 8 - (SCALE / 2);
 		floorBackup.position.z = SCALE * 8 - (SCALE / 2);
 		floorBackup.material.map.magFilter = THREE.NearestFilter;
-		scene.add( floorBackup );
+		scene.add(floorBackup);
 	}
 	
 	//Now that sound sources are laid out, we can map out how the surrounding triggers will be laid out based on adjacent sound sources
@@ -755,9 +760,8 @@ function generateMap(scene,borgData,textureData)
 				if(scene.children.some(child => child.soundRef && child.position.x == (SCALE * x) && child.position.z == (SCALE * (y + b)) && child != sound && child.soundRef == sound.soundRef)) continue;
 				
 				var soundObject = sound.children.find(child => child.type == "Audio");
-				var triggerBox = new PlayerTrigger(newClass,function(collider) {
-					if(!soundObject.isPlaying) soundObject.playSound();
-				},function(collider) {						
+				var triggerBox = new PlayerTrigger(newClass,function(collider) {if(!soundObject.isPlaying) soundObject.playSound();},function(collider)
+				{						
 					var distance = heightlessDistance(this.soundBox.position,collider.position);
 					
 					var closeSounds = (function(original)
@@ -826,14 +830,14 @@ function markLine(position,color)
 	});
 	var geometry = new THREE.Geometry();
 	geometry.vertices.push(
-		new THREE.Vector3( 0, 0, 0 ),
-		new THREE.Vector3( 0, 30, 0 )
+		new THREE.Vector3(0, 0, 0),
+		new THREE.Vector3(0, 30, 0)
 	);
 	
-	var line = new THREE.Line( geometry, material );
+	var line = new THREE.Line(geometry, material);
 	line.position.x = position.x;
 	line.position.z = position.z;
-	scene.add( line );	
+	scene.add(line);	
 }
 
 function loadAssets(borgData)
@@ -853,9 +857,7 @@ function loadAssets(borgData)
 					var tileTex = textureData.clone();
 					tileTex.needsUpdate = true; 
 					tileTex.offset.y = i/borgData.floor.length;
-					var material = new THREE.MeshBasicMaterial( {
-						map: tileTex
-					});
+					var material = new THREE.MeshBasicMaterial({map: tileTex});
 					floorMaterials.push(material);
 				}
 				
@@ -891,9 +893,7 @@ function loadAssets(borgData)
 					tileTex.offset.y = i/borgData.ceiling.length;
 					tileTex.wrapS = THREE.RepeatWrapping;
 					tileTex.repeat.x = -1;
-					var material = new THREE.MeshBasicMaterial( {
-						map: tileTex
-					});
+					var material = new THREE.MeshBasicMaterial({map: tileTex});
 					ceilingMaterials.push(material);
 				}
 				return {ceilings: ceilingMaterials}
@@ -921,9 +921,7 @@ function loadAssets(borgData)
 					tileTex.offset.x = (startingPoint % imgWidth) / imgWidth;
 					tileTex.offset.y = (Math.floor(startingPoint / imgWidth)) / textureData.image.naturalHeight;
 										
-					var material = new THREE.MeshBasicMaterial( {
-						map: tileTex
-					});
+					var material = new THREE.MeshBasicMaterial({map: tileTex});
 					wallMaterials.push(material);
 				}
 				return {walls: wallMaterials}
@@ -933,9 +931,7 @@ function loadAssets(borgData)
 				var wallMaterials = [];
 				for(var i = 0; i < borgData.wall.offsets.length; i++)
 				{
-					var material = new THREE.MeshBasicMaterial( {
-						color:"red", wireframe:true
-					});
+					var material = new THREE.MeshBasicMaterial({color:"red", wireframe:true});
 					wallMaterials.push(material);
 				}
 				return {walls: wallMaterials};
@@ -949,13 +945,15 @@ function loadAssets(borgData)
 		{
 			Promise.all(Array.from(borgData.soundRefs,sound => new Promise(function(resolve)
 			{
-				audioLoader.load( borgPath + "media/" + sound, 
-				function(data) {
+				audioLoader.load(borgPath + "media/" + sound, 
+				function(data)
+				{
 					console.log(data);
 					resolve(data);
 				},
 				function() { },
-				function() {
+				function()
+				{
 					console.log("No sound");
 					resolve(null);
 				});
@@ -969,7 +967,8 @@ function loadAssets(borgData)
 	},error => console.warn)]
 	).then(dataObjects => {
 		
-		var consolidatedData = dataObjects.reduce(function(acc, x) {
+		var consolidatedData = dataObjects.reduce(function(acc, x)
+		{
 			for (var key in x) acc[key] = x[key];
 			return acc;
 		}, {});
@@ -985,7 +984,7 @@ function Vector3OnGround(vector)
 
 function heightlessDistance(vector1,vector2)
 {
-	return Vector3OnGround(vector1).distanceTo( Vector3OnGround(vector2) );
+	return Vector3OnGround(vector1).distanceTo(Vector3OnGround(vector2));
 }
 
 function renderBorg(scene,borgData,bg)

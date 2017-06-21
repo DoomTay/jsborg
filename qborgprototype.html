@@ -4,23 +4,31 @@
 <head>
 	<meta charset="utf-8">
 	<title>QBORG Viewer Prototype</title>
-	<script src="pako.js"></script>
-	<script src="three.js"></script>
-	<script src="cwspriteloader.js"></script>
-	<script src="KeyboardState.js"></script>
-	<script src="jsborg.js"></script>
+	<script src="scripts/pako.js"></script>
+	<script src="scripts/three.js"></script>
+	<script src="scripts/cwspriteloader.js"></script>
+	<script src="scripts/KeyboardState.js"></script>
+	<script src="scripts/jsborg.js"></script>
 	<style type="text/css">
 		#emb
 		{
 			width: 144px;
 			height: 144px;
 			background-color: #00FFFF;
+			float:left;
 		}
+		
 		#nav
 		{
 			width: 144px;
 			height: 144px;
 			background-color: #FF00FF;
+			float:right;
+		}
+		
+		#hud
+		{
+			width:512px;
 		}
 		
 		#playerPos
@@ -29,6 +37,11 @@
 			width: 5px;
 			height: 5px;
 			background-color: red;
+		}
+		
+		#speed
+		{
+			width:200px;
 		}
 		
 		#sidePanel
@@ -42,8 +55,11 @@
 	<input onchange="loadBorg()" type="file" accept=".borg" ><br>
 	<iframe name="sidePanel" id="sidePanel" src="PKMNSide.html" width="256" height="512" align="right"></iframe>
 	<div id="borgDisplay"></div>
-	<div id="emb"></div>
-	<div id="nav"><div id="playerPos"></div></div>
+	<div id="hud">
+		<div id="emb"></div>
+		<input id="speed" type="range" min="10" max="500" />
+		<div id="nav"><div id="playerPos"></div></div>
+	</div>
 	
 	<script>
 		var borg = {};

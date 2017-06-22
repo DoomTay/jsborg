@@ -80,7 +80,7 @@ localFileLoader.prototype =
 			
 			reader.readAsDataURL(file);
 		}
-		else onError("File not found");
+		else if(onError) onError("File not found");
 	},
 
 	setCrossOrigin: function(value)

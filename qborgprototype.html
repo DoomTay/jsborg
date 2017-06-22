@@ -87,7 +87,7 @@
 		{
 			var reader  = new FileReader();
 			files = Array.from(document.querySelector('input[type=file]').files);
-			var file = files.find(file => file.name == "the_islands.borg");
+			var file = files.find(file => file.name == "office.borg");
 			
 			reader.readAsText(file);
 						
@@ -98,8 +98,15 @@
 				borgDisplay.innerHTML = "";
 				var contents = (new DOMParser()).parseFromString(e.target.result, "text/xml").childNodes[0];
 				borg = parseBorg(contents);
-				emb.style.backgroundImage = "url('" + borgPath + "domains/" + borg.emb + "')";
-				nav.style.backgroundImage = "url('" + borgPath + "domains/" + borg.nav + "')";
+				fileLoader.load("domains/" + borg.emb,function(data)
+				{
+					emb.style.backgroundImage = "url('" + data + "')";
+				});
+				
+				fileLoader.load("domains/" + borg.nav,function(data)
+				{
+					nav.style.backgroundImage = "url('" + data + "')";
+				});
 				
 				var playerCoords = contents.getElementsByTagName("gen")[0].getElementsByTagName("pos")[0].textContent.trim().split(" ");
 								

@@ -66,8 +66,6 @@ CWCTRLLoader.prototype =
 				
 			}
 			
-			console.log(url,additionalData.cellWidth, additionalData.cellHeight);
-			
 			var whitePixels = new Array(additionalData.cellWidth * additionalData.cellHeight * 4);
 				
 			whitePixels.fill(255);

@@ -7,6 +7,8 @@
 	<script src="scripts/pako.js"></script>
 	<script src="scripts/three.js"></script>
 	<script src="scripts/cwspriteloader.js"></script>
+	<script src="scripts/cwctrlloader.js"></script>
+	<script src="scripts/localfileloader.js"></script>
 	<script src="scripts/KeyboardState.js"></script>
 	<script src="scripts/jsborg.js"></script>
 	<style type="text/css">
@@ -52,7 +54,7 @@
 </head>
 
 <body>
-	<input onchange="loadBorg()" type="file" accept=".borg" ><br>
+	<input onchange="loadBorg()" type="file" accept=".borg" webkitdirectory><br>
 	<iframe name="sidePanel" id="sidePanel" src="PKMNSide.html" width="256" height="512" align="right"></iframe>
 	<div id="borgDisplay"></div>
 	<div id="hud">
@@ -63,6 +65,7 @@
 	
 	<script>
 		var borg = {};
+		var files = [];
 		var borgDisplay = document.getElementById("borgDisplay");
 		var emb = document.getElementById("emb");
 		var nav = document.getElementById("nav");
@@ -83,15 +86,18 @@
 		function loadBorg()
 		{
 			var reader  = new FileReader();
-			var file    = document.querySelector('input[type=file]').files[0];
+			files = Array.from(document.querySelector('input[type=file]').files);
+			var file = files.find(file => file.name == "the_islands.borg");
+			
+			reader.readAsText(file);
+						
 			var windowWidth = 512;
 			var windowHeight = 512;
 			reader.addEventListener("load", function(e)
 			{
 				borgDisplay.innerHTML = "";
-				var contents = (new DOMParser() ).parseFromString( e.target.result, "text/xml").childNodes[0];
+				var contents = (new DOMParser()).parseFromString(e.target.result, "text/xml").childNodes[0];
 				borg = parseBorg(contents);
-				console.log(file);
 				emb.style.backgroundImage = "url('" + borgPath + "domains/" + borg.emb + "')";
 				nav.style.backgroundImage = "url('" + borgPath + "domains/" + borg.nav + "')";
 				
@@ -105,7 +111,7 @@
 				if(angle < 0) angle += 360;
 				
 				scene = new THREE.Scene();
-				
+								
 				player = new THREE.Mesh(new THREE.BoxGeometry(SCALE / 4, SCALE / 4, SCALE / 4), new THREE.MeshBasicMaterial({ visible:false}));
 				player.position.x = playerX * SCALE - (SCALE / 2);
 				player.position.z = playerY * SCALE - (SCALE / 2);
@@ -123,7 +129,7 @@
 				
 				if(borg.bgGraphic)
 				{
-					var backgroundTexture = loader.load(borgPath + "domains/" + borg.bgGraphic,
+					var backgroundTexture = fileLoader.load("domains/" + borg.bgGraphic,
 					function (skyTexture)
 					{
 						bgMesh = new THREE.Mesh(
@@ -405,12 +411,11 @@
 					origin.children.map(updateAll);
 				}
 			})
-			reader.readAsText(file);
 		}
 		
 		function changeGTW(shortcut)
 		{
-			console.log("Looking at",borgPath + "domains/" + shortcut);
+			console.log("Looking at","domains/" + shortcut);
 			
 			getShortcut(shortcut).then(path => 
 			{
@@ -427,25 +432,16 @@
 		{
 			return new Promise(function(resolve,reject)
 			{
-				var test = new XMLHttpRequest();
-				test.onload = function() {
-					console.log(this.response);
-					var path = this.response.match(/URL=(.+)/)[1];
-					if(path.startsWith("file:")) path = path.substring(8);
-					else path = path.substring(7);
-					var fullBorgPath = new URL(borgPath,window.location.href).href;
-					path = new URL(path,fullBorgPath + "domains/");
+				fileLoader.load(path,function(path)
+				{
 					resolve(path);
-				}
-				test.onerror = reject;
-				test.open("GET", borgPath + "domains/" + path, true);
-				test.send();
+				},function() { },reject);
 			})
 		}
 		
 		function changeGTW2(shortcut)
 		{
-			console.log("Looking at",borgPath + "domains/" + shortcut);
+			console.log("Looking at","domains/" + shortcut);
 			getShortcut(shortcut).then(path => 
 			{
 				sidePanel.src = path;

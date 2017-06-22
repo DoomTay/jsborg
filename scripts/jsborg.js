@@ -1,4 +1,5 @@
 var loader = new THREE.TextureLoader();
+var fileLoader = new localFileLoader();
 var audioLoader = new THREE.AudioLoader();
 var SCALE = 256;
 //The path of the submitted .borg file relative to the main page. Needed because we will need to load other files that are descended from this path
@@ -120,7 +121,7 @@ function loadTexture(tex)
 {
 	return new Promise(function(resolve,reject)
 	{
-		loader.load(
+		fileLoader.load(
 			tex,
 			function(texture)
 			{
@@ -155,7 +156,7 @@ function makeSpriteMaterial(spritePath)
 	return new Promise(function(resolve,reject)
 	{
 		//Digging the sprite graphic for important things like size and frame count
-		new CWSpriteLoader().load(spritePath,
+		fileLoader.load(spritePath,
 		resolve,
 		function(xhr)
 		{
@@ -723,7 +724,7 @@ function generateMap(scene,borgData,textureData)
 	//Backup plan if the floor textures cannot be loaded
 	if(!textureData.floors && borgData.grid.some(gridY => gridY.some(gridX => gridX["FLOOR"] != 255)))
 	{
-		var floorBackup = new THREE.Mesh(new THREE.PlaneGeometry(SCALE * 16, SCALE * 16), new THREE.MeshBasicMaterial({map:loader.load(borgPath + "domains/" + borgData.nav)}));
+		var floorBackup = new THREE.Mesh(new THREE.PlaneGeometry(SCALE * 16, SCALE * 16), new THREE.MeshBasicMaterial({map:fileLoader.load("domains/" + borgData.nav)}));
 		floorBackup.rotateX(-Math.PI / 2);
 		floorBackup.position.x = SCALE * 8 - (SCALE / 2);
 		floorBackup.position.z = SCALE * 8 - (SCALE / 2);
@@ -842,13 +843,13 @@ function markLine(position,color)
 
 function loadAssets(borgData)
 {
-	var spriteMaterials = Array.from(borgData.spriteRefs, sprite => makeSpriteMaterial(borgPath + "objects/" + sprite));
+	var spriteMaterials = Array.from(borgData.spriteRefs, sprite => makeSpriteMaterial("objects/" + sprite));
 		
 	return Promise.all([new Promise(function(resolve,reject)
 	{
 		if(borgData.floor)
 		{
-			resolve(loadTexture(borgPath + "domains/" + borgData.floor.graphic).then(textureData => {
+			resolve(loadTexture("domains/" + borgData.floor.graphic).then(textureData => {
 				textureData.repeat.y = 1/borgData.floor.length;
 		
 				var floorMaterials = [];
@@ -882,7 +883,7 @@ function loadAssets(borgData)
 	{
 		if(borgData.ceiling)
 		{
-			resolve(loadTexture(borgPath + "domains/" + borgData.ceiling.graphic).then(textureData => {
+			resolve(loadTexture("domains/" + borgData.ceiling.graphic).then(textureData => {
 				textureData.repeat.y = 1/borgData.ceiling.length;
 				
 				var ceilingMaterials = [];
@@ -905,7 +906,7 @@ function loadAssets(borgData)
 	{
 		if(borgData.wall)
 		{
-			resolve(loadTexture(borgPath + "domains/" + borgData.wall.graphic).then(textureData => {
+			resolve(loadTexture("domains/" + borgData.wall.graphic).then(textureData => {
 				textureData.repeat.y = 1/(textureData.image.naturalHeight / 256);
 								
 				var wallMaterials = [];
@@ -945,7 +946,7 @@ function loadAssets(borgData)
 		{
 			Promise.all(Array.from(borgData.soundRefs,sound => new Promise(function(resolve)
 			{
-				audioLoader.load(borgPath + "media/" + sound, 
+				fileLoader.load("media/" + sound, 
 				function(data)
 				{
 					console.log(data);

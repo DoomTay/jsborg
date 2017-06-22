@@ -87,9 +87,25 @@
 		{
 			var reader  = new FileReader();
 			files = Array.from(document.querySelector('input[type=file]').files);
-			var file = files.find(file => file.name == "office.borg");
 			
-			reader.readAsText(file);
+			borgDisplay.innerHTML = "";
+			
+			var levels = files.filter(file => file.name.endsWith(".borg"));
+			
+			for(var i = 0; i < levels.length; i++)
+			{
+				var borgOption = document.createElement("button");
+				borgOption.innerText = levels[i].name;
+				borgOption.value = levels[i].name;
+				borgOption.onclick = function(e)
+				{
+					var file = levels.find(file => file.name == e.target.value);
+					
+					reader.readAsText(file);
+				}
+				borgDisplay.appendChild(borgOption);
+				
+			}
 						
 			var windowWidth = 512;
 			var windowHeight = 512;

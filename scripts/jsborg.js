@@ -716,8 +716,9 @@ function generateMap(scene,borgData,textureData)
 	}
 	
 	//Backup plan if the floor textures cannot be loaded
-	if(!textureData.floors && borgData.grid.some(gridY => gridY.some(gridX => gridX["FLOOR"] != 255)))
+	if(!textureData.floors && borgData.floor != null && borgData.grid.some(gridY => gridY.some(gridX => gridX["FLOOR"] != 255)))
 	{
+		console.log(borgData.nav);
 		var floorBackup = new THREE.Mesh(new THREE.PlaneGeometry(SCALE * 16, SCALE * 16), new THREE.MeshBasicMaterial({map:fileLoader.load("domains/" + borgData.nav)}));
 		floorBackup.rotateX(-Math.PI / 2);
 		floorBackup.position.x = SCALE * 8 - (SCALE / 2);

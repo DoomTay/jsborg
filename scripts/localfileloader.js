@@ -19,7 +19,7 @@ localFileLoader.prototype =
 			
 			if(path.endsWith(".emb") || path.endsWith(".nav") || path.endsWith(".html"))
 			{
-				onLoad(URL.createObjectURL(file));
+				onLoad(pathURL);
 			}
 			else if(path.endsWith(".flr") || path.endsWith(".cei") || path.endsWith(".wal") || path.endsWith(".bck"))
 			{
@@ -35,22 +35,22 @@ localFileLoader.prototype =
 			else if(path.endsWith(".sprite"))
 			{
 				var fileLoader = new CWSpriteLoader(this.manager);
-				fileLoader.load(pathURL,onLoad, onProgress, onError);
+				fileLoader.load(pathURL, onLoad, onProgress, onError);
 			}
 			else if(path.endsWith(".wav"))
 			{
 				var audioLoader = new THREE.AudioLoader(this.manager);
-				audioLoader.load(pathURL,onLoad, onProgress, onError);
+				audioLoader.load(pathURL, onLoad, onProgress, onError);
 			}
 			else if(path.endsWith(".ctrl"))
 			{
 				var fileLoader = new CWCTRLLoader(this.manager);
-				fileLoader.load(pathURL,onLoad, onProgress, onError);
+				fileLoader.load(pathURL, onLoad, onProgress, onError);
 			}
 			else if(path.endsWith(".url"))
 			{
 				var fileLoader = new THREE.FileLoader(this.manager);
-				fileLoader.load(pathURL,function(data)
+				fileLoader.load(pathURL, function(data)
 				{
 					var path = data.match(/URL=(\S+)/)[1];
 					path = path.substring(path.indexOf("../") + 3);

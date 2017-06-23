@@ -254,14 +254,13 @@ CWSpriteLoader.prototype =
 					offset += 4;
 					newSegment.worldPositionX = dataView.getUint32(offset,true);
 					offset += 4;
-					var otherSettings = (dataView.getUint32(offset,true)).toString(2);
-					while(otherSettings.length < 4) otherSettings = "0" + otherSettings;
-					offset += 4;
-					newSegment.unknownThings.push(otherSettings[0]);
-					newSegment.multiSided = otherSettings[1] == 1;
+					var otherSettings = dataView.getUint32(offset,true);
+					newSegment.unknownThings.push((otherSettings >> 3) & 1);
+					newSegment.multiSided = ((otherSettings >> 2) & 1) == 1;
 					//Yes, 0 means it's enabled
-					newSegment.enableMenuItem = otherSettings[2] == 0;
-					newSegment.unknownThings.push(otherSettings[3]);
+					newSegment.enableMenuItem = ((otherSettings >> 1) & 1) == 0;
+					newSegment.unknownThings.push((otherSettings >> 0) & 1);
+					offset += 4;
 					newSegment.animateOnLoading = dataView.getUint32(offset,true) == 1;
 					offset += 4;
 					newSegment.sides = dataView.getUint32(offset,true);
@@ -276,13 +275,11 @@ CWSpriteLoader.prototype =
 					offset += 4;
 					newSegment.defaultDuration = dataView.getUint32(offset,true);
 					offset += 4;
-					var visibility = (dataView.getUint32(offset,true)).toString(2);
-					while(visibility.length < 4) visibility = "0" + visibility;
-					visibility = visibility.split("");
-					newSegment.visibilityOnNorth = visibility[0] == 1;
-					newSegment.visibilityOnSouth = visibility[1] == 1;
-					newSegment.visibilityOnWest = visibility[2] == 1;
-					newSegment.visibilityOnEast = visibility[3] == 1;
+					var visibility = dataView.getUint32(offset,true);
+					newSegment.visibilityOnNorth = ((visibility >> 3) & 1) == 1;
+					newSegment.visibilityOnSouth = ((visibility >> 2) & 1) == 1;
+					newSegment.visibilityOnWest = ((visibility >> 1) & 1) == 1;
+					newSegment.visibilityOnEast = ((visibility >> 0) & 1) == 1;
 					offset += 4;
 					newSegment.unknownThings.push(dataView.getUint32(offset,true));
 					offset += 4;
@@ -325,10 +322,9 @@ CWSpriteLoader.prototype =
 						offset += 4;
 						newSegment.mouseOver.end = dataView.getInt32(offset,true);
 						offset += 4;
-						var revertOptions = (dataView.getUint32(offset,true)).toString(2);
-						while(revertOptions.length < 2) revertOptions = "0" + revertOptions;
-						newSegment.mouseOver.revertOnStop = revertOptions[0] == 1;
-						newSegment.mouseOver.revertOnExit = revertOptions[1] == 1;
+						var revertOptions = dataView.getUint32(offset,true);
+						newSegment.mouseOver.revertOnStop = ((revertOptions >> 1) & 1) == 1;
+						newSegment.mouseOver.revertOnExit = ((revertOptions >> 0) & 1) == 1;
 						offset += 4;
 						newSegment.mouseClick = {}
 						newSegment.mouseClick.enabled = dataView.getUint32(offset,true) == 1;
@@ -341,10 +337,9 @@ CWSpriteLoader.prototype =
 						offset += 4;
 						newSegment.mouseClick.end = dataView.getInt32(offset,true);
 						offset += 4;
-						var revertOptions = (dataView.getUint32(offset,true)).toString(2);
-						while(revertOptions.length < 2) revertOptions = "0" + revertOptions;
-						newSegment.mouseClick.revertOnStop = revertOptions[0] == 1;
-						newSegment.mouseClick.revertOnExit = revertOptions[1] == 1;
+						var revertOptions = dataView.getUint32(offset,true);
+						newSegment.mouseClick.revertOnStop = ((revertOptions >> 1) & 1) == 1;
+						newSegment.mouseClick.revertOnExit = ((revertOptions >> 0) & 1) == 1;
 						offset += 4;
 						newSegment.proximity = {};
 						newSegment.proximity.enabled = dataView.getUint32(offset,true) == 1;
@@ -357,10 +352,9 @@ CWSpriteLoader.prototype =
 						offset += 4;
 						newSegment.proximity.end = dataView.getInt32(offset,true);
 						offset += 4;
-						var revertOptions = (dataView.getUint32(offset,true)).toString(2);
-						while(revertOptions.length < 2) revertOptions = "0" + revertOptions;
-						newSegment.proximity.revertOnStop = revertOptions[0] == 1;
-						newSegment.proximity.revertOnExit = revertOptions[1] == 1;
+						var revertOptions = dataView.getUint32(offset,true);
+						newSegment.proximity.revertOnStop = ((revertOptions >> 1) & 1) == 1;
+						newSegment.proximity.revertOnExit = ((revertOptions >> 0) & 1) == 1;
 						offset += 4;
 					}
 					return newSegment;

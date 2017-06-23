@@ -104,8 +104,9 @@
 					reader.readAsText(file);
 				}
 				borgDisplay.appendChild(borgOption);
-				
 			}
+			
+			if(levels.length == 0) borgDisplay.innerHTML = "No QBORGs found in this directory";
 						
 			var windowWidth = 512;
 			var windowHeight = 512;
@@ -455,16 +456,12 @@
 		{
 			return new Promise(function(resolve,reject)
 			{
-				fileLoader.load(path,function(path)
-				{
-					resolve(path);
-				},function() { },reject);
+				fileLoader.load(path,resolve,function() { },reject);
 			})
 		}
 		
 		function changeGTW2(shortcut)
 		{
-			console.log("Looking at","domains/" + shortcut);
 			getShortcut(shortcut).then(path => 
 			{
 				sidePanel.src = path;

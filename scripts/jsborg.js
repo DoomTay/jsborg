@@ -152,10 +152,7 @@ function makeSpriteMaterial(spritePath)
 		//Digging the sprite graphic for important things like size and frame count
 		fileLoader.load(spritePath,
 		resolve,
-		function(xhr)
-		{
-			console.log(spritePath,(xhr.loaded / xhr.total * 100) + '% loaded');
-		},
+		function(xhr) { },
 		function(xhr)
 		{
 			console.warn(spritePath,"cannot be loaded");

@@ -53,7 +53,7 @@
 
 <body>
 	<input onchange="loadBorg()" type="file" accept=".borg" ><br>
-	<iframe name="sidePanel" id="sidePanel" src="PKMNSide.html" width="256" height="512" align="right"></iframe>
+	<iframe name="sidePanel" id="sidePanel" src="CWSide.html" width="256" height="512" align="right"></iframe>
 	<div id="borgDisplay"></div>
 	<div id="hud">
 		<div id="emb"></div>
@@ -67,7 +67,26 @@
 		var emb = document.getElementById("emb");
 		var nav = document.getElementById("nav");
 		var sidePanel = document.getElementById("sidePanel");
-		sidePanel.src = "PKMNSide.html";
+		
+		sidePanel.onload = function()
+		{
+			var links = this.contentDocument.links;
+			
+			var contentWindow = this.contentWindow;
+			
+			for(var l = 0; l < links.length; l++)
+			{
+				links[l].addEventListener("click",function(e)
+				{
+					if(!this.href.startsWith("javascript:"))
+					{
+						e.preventDefault();
+						updateFrame(this.href);
+					}
+				})
+			}
+		}
+		
 		var player = new THREE.Mesh(new THREE.BoxGeometry(SCALE / 4, SCALE / 4, SCALE / 4), new THREE.MeshBasicMaterial({ visible:false}));
 		var playerIndicator = document.getElementById("playerPos");
 		var audioCtx = new AudioContext();
@@ -77,17 +96,21 @@
 		var mouse = new THREE.Vector2();
 		var scene = new THREE.Scene();
 		var currentMusic = "";
+		var scene = new THREE.Scene();
+		var renderId = null;
 		
 		var omniSound = new THREE.Audio(listener);
 		
 		function loadBorg()
 		{
-			var reader  = new FileReader();
-			var file    = document.querySelector('input[type=file]').files[0];
+			var reader = new FileReader();
+			var file = document.querySelector('input[type=file]').files[0];
 			var windowWidth = 512;
 			var windowHeight = 512;
 			reader.addEventListener("load", function(e)
 			{
+				cancelAnimationFrame(renderId);
+				scene = new THREE.Scene();
 				borgDisplay.innerHTML = "";
 				var contents = (new DOMParser() ).parseFromString( e.target.result, "text/xml").childNodes[0];
 				borg = parseBorg(contents);
@@ -106,7 +129,7 @@
 				
 				scene = new THREE.Scene();
 				
-				player = new THREE.Mesh(new THREE.BoxGeometry(SCALE / 4, SCALE / 4, SCALE / 4), new THREE.MeshBasicMaterial({ visible:false}));
+				player = new THREE.Mesh(new THREE.BoxGeometry(SCALE / 4, SCALE / 4, SCALE / 4), new THREE.MeshBasicMaterial({ wireframe:true}));
 				player.position.x = playerX * SCALE - (SCALE / 2);
 				player.position.z = playerY * SCALE - (SCALE / 2);
 				player.position.y = (SCALE / 8) - 32 + height;
@@ -236,7 +259,7 @@
 				
 				function render(time)
 				{
-					requestAnimationFrame(render);
+					renderId = requestAnimationFrame(render);
 					
 					var delta = time - prevTime;
 						
@@ -410,46 +433,83 @@
 		
 		function changeGTW(shortcut)
 		{
-			console.log("Looking at",borgPath + "domains/" + shortcut);
-			
 			getShortcut(shortcut).then(path => 
 			{
-				var GTWDisplay = document.createElement("iframe");
-				GTWDisplay.width = windowWidth;
-				GTWDisplay.height = windowHeight;
-				GTWDisplay.src = path;
-				borgDisplay.replaceChild(GTWDisplay,borgDisplay.firstChild);
-				switched = true;
+				if(path.endsWith(".borg")) window.location.href = path;
+				else
+				{
+					var GTWDisplay = document.createElement("iframe");
+					GTWDisplay.width = windowWidth;
+					GTWDisplay.height = windowHeight;
+					GTWDisplay.src = path;
+					borgDisplay.replaceChild(GTWDisplay,borgDisplay.firstChild);
+					switched = true;
+				}
 			},console.error)
 		}
 		
-		function getShortcut(path)
+		function getShortcut(shortcutPath)
 		{
 			return new Promise(function(resolve,reject)
 			{
-				var test = new XMLHttpRequest();
-				test.onload = function() {
-					console.log(this.response);
-					var path = this.response.match(/URL=(.+)/)[1];
-					if(path.startsWith("file:")) path = path.substring(8);
-					else path = path.substring(7);
-					var fullBorgPath = new URL(borgPath,window.location.href).href;
-					path = new URL(path,fullBorgPath + "domains/");
-					resolve(path);
+				if(shortcutPath.endsWith(".html")) resolve(borgPath + shortcutPath);
+				else if(shortcutPath.endsWith(".url"))
+				{
+					var test = new XMLHttpRequest();
+					test.onload = function() {
+						if(this.status == 200)
+						{
+							var path = this.response.match(/URL=(\S+)/)[1];
+							if(path.startsWith("file:")) path = path.substring(8);
+							else path = path.substring(7);
+							var fullBorgPath = new URL(borgPath,window.location.href).href;
+							path = new URL(path,fullBorgPath + "domains/").href;
+							resolve(path);
+						}
+						else reject(shortcutPath + " not found");
+					}
+					test.onerror = reject;
+					test.open("GET", borgPath + "domains/" + shortcutPath, true);
+					test.send();
 				}
-				test.onerror = reject;
-				test.open("GET", borgPath + "domains/" + path, true);
-				test.send();
+				else resolve(new URL(shortcutPath + ".borg",window.location.href).href);
 			})
 		}
 		
 		function changeGTW2(shortcut)
 		{
 			console.log("Looking at",borgPath + "domains/" + shortcut);
-			getShortcut(shortcut).then(path => 
-			{
-				sidePanel.src = path;
-			},console.error);
+			getShortcut(shortcut).then(updateFrame,console.error);
+		}
+		
+		function updateFrame(path)
+		{
+			var frameRetrieval = new XMLHttpRequest();
+			frameRetrieval.onload = function() {
+				var response = this.response;
+				
+				var newBase = document.createElement("base");
+				newBase.href = this.responseURL;
+				response.head.insertBefore(newBase, response.head.firstChild);
+				
+				var shimScript = document.createElement("script");
+				
+				var pathToBorg = borgPath + document.querySelector('input[type=file]').files[0].name;
+				
+				var shimVars = shimContent.toString().replace("target","\"" + pathToBorg + "\"");
+				shimVarsStripped = shimVars.substring(shimVars.indexOf("{") + 1, shimVars.lastIndexOf("}"));
+				
+				shimScript.innerHTML = shimVarsStripped;
+				response.head.insertBefore(shimScript, response.head.firstChild);
+				
+				sidePanel.src = "data:text/html," + encodeURIComponent(response.documentElement.outerHTML);
+			}
+			frameRetrieval.open("GET", path, true);
+			frameRetrieval.overrideMimeType("text/html");
+			frameRetrieval.responseType = "document";
+			frameRetrieval.send();
+			
+			//sidePanel.src = path;
 		}
 		
 		function playOmni(buffer)

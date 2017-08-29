@@ -4,11 +4,229 @@ var SCALE = 256;
 //The path of the submitted .borg file relative to the main page. Needed because we will need to load other files that are descended from this path
 //Is it possible to get the path of a submitted file without having to hardcode it? Probably not without disabling important security settings.
 //var borgPath = "compiledtest/";
-var borgPath = "p2kfixed/game/borgs/";
-//var borgPath = "zeta/borgs/"
+//var borgPath = "p2kfixed/game/borgs/";
+var borgPath = "zeta/borgs/"
 //var borgPath = "Gallery/worlds/olympiad/"
 var triggers = [];
 var walls = [];
+
+function shimContent()
+{
+	window.external.BorgLocation = target;
+	window.external.GetVer = function() { return "5.3" };
+	window.external.moveTile = window.external.MoveTile = function(layer, fromX, fromY, toX, toY, keepOriginal)
+	{
+		window.top.postMessage({type:"moveTile", layer:layer, fromX:fromX, fromY:fromY, toX:toX, toY:toY,keepOriginal:keepOriginal},"*")
+	}
+}
+
+function spawnSprite(x,y,material)
+{
+	if(borg.grid[y] && borg.grid[y][x]["WALL"] == 0)
+	{
+		//There isn't a wall here, so this is just a regular old sprite
+		var sprite = new THREE.Sprite(material);
+		//By default, sprites will be placed in the middle of the tile, but sometimes a sprite will be configured to be offset
+		sprite.position.x = (SCALE * x) - 128 + material.CWSData.worldPositionX;
+		sprite.position.z = (SCALE * y) + 128 - material.CWSData.worldPositionY;
+		sprite.scale.set(material.CWSData.worldWidth,material.CWSData.worldHeight,1);
+		sprite.position.y += (sprite.scale.y / 2) + (material.CWSData.worldPositionZ);
+	}
+	
+	else
+	{
+		//There's a wall here, so the "sprite" will be set up very differently. Here the sprite will be "projected" onto the wall. To make things easier, this will be its own group of meshes with its own material.
+		var sprite = new THREE.Object3D();
+		sprite.type = "SpriteOnWall";
+		sprite.position.x = (SCALE * x);
+		sprite.position.z = (SCALE * y);
+		var spritePlane = new THREE.PlaneGeometry(SCALE, material.CWSData.cellHeight);
+		
+		var expandedTexture = document.createElement('canvas');
+		expandedTexture.width = SCALE;
+		expandedTexture.height = material.CWSData.cellHeight * material.CWSData.cellCount;
+		var ctx = expandedTexture.getContext('2d');
+		
+		var leftOffset = Math.max((expandedTexture.width - material.CWSData.cellWidth) / 2,0);
+		
+		if(material.map && material.map.image)
+		{
+			if(material.map.image.data)
+			{
+				var imageData = ctx.createImageData(material.map.image.width, material.map.image.height);
+				imageData.data.set(material.map.image.data);
+				ctx.putImageData(imageData,leftOffset,0);
+			}
+			else ctx.drawImage(material.map.image,leftOffset,0);
+		}
+		else
+		{
+			ctx.fillStyle = "rgb(255,0,0)";
+			ctx.fillRect(0, 0,expandedTexture.width,expandedTexture.height);
+		}
+		
+		//console.log(borg.spriteRefs[borg.grid[y][x]["SPRITE"] - 1],material.map.image);
+		
+		//Using polygon offset in order to deal with Z-fighting
+		var spritePlaneMaterial = new THREE.MeshBasicMaterial({
+			map:loader.load(expandedTexture.toDataURL()),
+			transparent:true,
+			polygonOffset:true,
+			polygonOffsetFactor:-2,
+			polygonOffsetUnits:0.1
+		});
+		
+		spritePlaneMaterial.CWSData = material.CWSData;
+		spritePlaneMaterial.CWSData.multiSided = false;
+		sprite.material = spritePlaneMaterial;
+		
+		if(material.map && spritePlaneMaterial.map)
+		{
+			spritePlaneMaterial.map.magFilter = THREE.NearestFilter;
+			spritePlaneMaterial.map.minFilter = THREE.NearestFilter;
+			spritePlaneMaterial.map.repeat.y = material.map.repeat.y;
+		}
+		
+		if(spritePlaneMaterial.CWSData.visibilityOnNorth)
+		{
+			var nMesh = new THREE.Mesh(spritePlane, spritePlaneMaterial);
+			nMesh.position.z = (SCALE * -0.5);
+			nMesh.position.y = spritePlaneMaterial.CWSData.cellHeight / 2;
+			nMesh.position.y += spritePlaneMaterial.CWSData.worldPositionZ - 1;
+			nMesh.rotateY(Math.PI);
+			sprite.add(nMesh);
+		}
+		
+		if(spritePlaneMaterial.CWSData.visibilityOnWest)
+		{
+			var wMesh = new THREE.Mesh(spritePlane, spritePlaneMaterial);
+			wMesh.position.x = SCALE * -0.5;
+			wMesh.position.y = spritePlaneMaterial.CWSData.cellHeight / 2;
+			wMesh.position.y += spritePlaneMaterial.CWSData.worldPositionZ - 1;
+			wMesh.rotateY(Math.PI * -0.5);
+			sprite.add(wMesh);
+		}
+		
+		if(spritePlaneMaterial.CWSData.visibilityOnEast)
+		{
+			var eMesh = new THREE.Mesh(spritePlane, spritePlaneMaterial);
+			eMesh.position.x = SCALE * 0.5;
+			eMesh.position.y = spritePlaneMaterial.CWSData.cellHeight / 2;
+			eMesh.position.y += spritePlaneMaterial.CWSData.worldPositionZ - 1;
+			eMesh.rotateY(Math.PI * 0.5);
+			sprite.add(eMesh);
+		}
+		
+		if(spritePlaneMaterial.CWSData.visibilityOnSouth)
+		{
+			var sMesh = new THREE.Mesh(spritePlane, spritePlaneMaterial);
+			sMesh.position.z = SCALE * 0.5;
+			sMesh.position.y = spritePlaneMaterial.CWSData.cellHeight / 2;
+			sMesh.position.y += spritePlaneMaterial.CWSData.worldPositionZ - 1;
+			sprite.add(sMesh);
+		}
+	}
+	
+	if(sprite.material.map) sprite.material.map.offset.y = ((sprite.material.CWSData.cellCount - 1) / sprite.material.CWSData.cellCount);
+	
+	sprite.material.currentDisplayTime = 0;
+	sprite.material.currentTile = 0;
+					
+	sprite.material.update = function(milliSec,direction)
+	{
+		if(this.CWSData.animateOnLoading)
+		{
+			this.currentDisplayTime += milliSec;
+			while (this.currentDisplayTime > this.CWSData.frameDurations[this.currentTile])
+			{
+				this.currentDisplayTime -= this.CWSData.frameDurations[this.currentTile];
+				this.currentTile++;
+				if (this.currentTile == this.CWSData.frameCount)
+					this.currentTile = 0;
+				if(this.map) this.map.offset.y = (this.CWSData.frameCount - 1 - this.currentTile) / this.CWSData.frameCount;
+			}
+		}
+		else if(this.CWSData.multiSided)
+		{												
+			var angleToIndex = Math.round((direction / 360) * this.CWSData.sides) % this.CWSData.sides;
+									
+			if(this.map) this.map.offset.y = (this.CWSData.sides - 1 - angleToIndex) / this.CWSData.sides;
+		}
+	};
+	
+	scene.add(sprite);
+}
+
+window.addEventListener("message", function(message)
+{
+	var command = message.data;
+	if(command.type == "moveTile")
+	{
+		var possibleChildren = scene.children.filter(child => child.position.x > ((command.fromX - 1.5) * SCALE) && child.position.x < ((command.fromX - 0.5) * SCALE) && child.position.z > ((command.fromY - 1.5) * SCALE) && child.position.z < ((command.fromY - 0.5) * SCALE));
+		var filteredDestinationChildren = scene.children.filter(child => child.position.x > ((command.toX - 1.5) * SCALE) && child.position.x < ((command.toX - 0.5) * SCALE) && child.position.z > ((command.toY - 1.5) * SCALE) && child.position.z < ((command.toY - 0.5) * SCALE));
+		var targetedObject = undefined;
+		var currentOccupant = undefined;
+		switch(command.layer)
+		{
+			case "SPRITE":
+				targetedObject = possibleChildren.find(child => child.type == "Sprite");
+				currentOccupant = filteredDestinationChildren.find(child => child.type == "Sprite");
+				if(targetedObject == null) alert("Missing sprite");
+				
+				spawnSprite(command.toX - 1,command.toY - 1,newMaterial(targetedObject.material));
+				break;
+			case "FLOOR":
+				targetedObject = possibleChildren.find(child => child.type == "FloorTile");
+				currentOccupant = filteredDestinationChildren.find(child => child.type == "FloorTile");
+				
+				var floorMaterial = targetedObject.material;
+				var plane = new FloorTile(floorMaterial);
+				plane.position.x = (command.toX - 1) * SCALE;
+				plane.position.z = (command.toY - 1) * SCALE;
+				scene.add(plane);
+				break;
+			case "NOWALK":
+				targetedObject = possibleChildren.find(child => walls.includes(child));
+				console.log(targetedObject);
+				var wallGeom = new THREE.BoxGeometry(SCALE, borg.height * 4, SCALE);
+				var wall = new THREE.Mesh(wallGeom, invisibleMaterial);
+				wall.position.x = (command.toX - 1) * SCALE;
+				wall.position.z = (command.toY - 1) * SCALE;
+				wall.position.y = ((borg.height * 4) / 2);
+				scene.add(wall);
+				walls.push(wall);
+				break;
+			case "LINK2":
+				targetedObject = possibleChildren.find(child => child.type == "PlayerTrigger" && child.page2);
+				currentOccupant = filteredDestinationChildren.find(child => child.type == "PlayerTrigger" && child.page2);
+				
+				var page = targetedObject.page2;
+				var triggerBox = new PlayerTrigger(page,function() {changeGTW2(this.page2)},function() {changeGTW2(borg.defaultPage),true});
+				triggerBox.position.x = (command.toX - 1) * SCALE;
+				triggerBox.position.z = (command.toY - 1) * SCALE;
+				triggerBox.page2 = page;
+				scene.add(triggerBox);
+				
+				var mouseTrigger = mouseTriggers.find(trigger => trigger.position.x == (command.fromX - 1) * SCALE && trigger.position.z == (command.fromY - 1) * SCALE);
+				
+				mouseTrigger.position.x = (command.toX - 1) * SCALE;
+				mouseTrigger.position.z = (command.toY - 1) * SCALE;
+				break;
+			default:
+				console.error("Unsupported layer " + command.layer);
+		}
+		
+		if(currentOccupant) scene.remove(currentOccupant);
+		
+		if(!command.keepOriginal)
+		{
+			scene.remove(targetedObject);
+			if(walls.includes(targetedObject)) walls.splice(walls.indexOf(targetedObject), 1); 
+			if(mouseTrigger) scene.remove(mouseTrigger);
+		}
+	}
+	else alert("Unsupported command type " + command.type);
+}, false);
 
 function parseBorg(code)
 {
@@ -383,140 +601,7 @@ function generateMap(scene,borgData,textureData)
 			if(borgData.grid[y][x]["SPRITE"])
 			{
 				var spriteMaterial = newMaterial(textureData.sprites[borgData.grid[y][x]["SPRITE"] - 1]);
-				
-				if(borgData.grid[y][x]["WALL"] == 0)
-				{
-					//There isn't a wall here, so this is just a regular old sprite
-					var sprite = new THREE.Sprite(spriteMaterial);
-					//By default, sprites will be placed in the middle of the tile, but sometimes a sprite will be configured to be offset
-					sprite.position.x = (SCALE * x) - 128 + spriteMaterial.CWSData.worldPositionX;
-					sprite.position.z = (SCALE * y) + 128 - spriteMaterial.CWSData.worldPositionY;
-					sprite.scale.set(spriteMaterial.CWSData.worldWidth,spriteMaterial.CWSData.worldHeight,1);
-					sprite.position.y += (sprite.scale.y / 2) + (spriteMaterial.CWSData.worldPositionZ);
-				}
-				
-				else
-				{
-					//There's a wall here, so the "sprite" will be set up very differently. Here the sprite will be "projected" onto the wall. To make things easier, this will be its own group of meshes with its own material.
-					var sprite = new THREE.Object3D();
-					sprite.type = "SpriteOnWall";
-					sprite.position.x = (SCALE * x);
-					sprite.position.z = (SCALE * y);
-					var spritePlane = new THREE.PlaneGeometry(SCALE, spriteMaterial.CWSData.cellHeight);
-					
-					var expandedTexture = document.createElement('canvas');
-					expandedTexture.width = SCALE;
-					expandedTexture.height = spriteMaterial.CWSData.cellHeight * spriteMaterial.CWSData.cellCount;
-					var ctx = expandedTexture.getContext('2d');
-					
-					var leftOffset = Math.max((expandedTexture.width - spriteMaterial.CWSData.cellWidth) / 2,0);
-					
-					if(spriteMaterial.map.image)
-					{
-						if(spriteMaterial.map.image.data)
-						{
-							var imageData = ctx.createImageData(spriteMaterial.map.image.width, spriteMaterial.map.image.height);
-							imageData.data.set(spriteMaterial.map.image.data);
-							ctx.putImageData(imageData,leftOffset,0);
-						}
-						else ctx.drawImage(spriteMaterial.map.image,leftOffset,0);
-					}
-					else
-					{
-						ctx.fillStyle = "rgb(255,0,0)";
-						ctx.fillRect(0, 0,expandedTexture.width,expandedTexture.height);
-					}
-					
-					//console.log(borgData.spriteRefs[borgData.grid[y][x]["SPRITE"] - 1],spriteMaterial.map.image);
-					
-					//Using polygon offset in order to deal with Z-fighting
-					var spritePlaneMaterial = new THREE.MeshBasicMaterial({
-						map:loader.load(expandedTexture.toDataURL()),
-						transparent:true,
-						polygonOffset:true,
-						polygonOffsetFactor:-2,
-						polygonOffsetUnits:0.1
-					});
-					
-					spritePlaneMaterial.CWSData = spriteMaterial.CWSData;
-					spritePlaneMaterial.CWSData.multiSided = false;
-					sprite.material = spritePlaneMaterial;
-					
-					if(spritePlaneMaterial.map)
-					{
-						spritePlaneMaterial.map.magFilter = THREE.NearestFilter;
-						spritePlaneMaterial.map.minFilter = THREE.NearestFilter;
-						spritePlaneMaterial.map.repeat.y = spriteMaterial.map.repeat.y;
-					}
-					
-					if(spritePlaneMaterial.CWSData.visibilityOnNorth)
-					{
-						var nMesh = new THREE.Mesh(spritePlane, spritePlaneMaterial);
-						nMesh.position.z = (SCALE * -0.5);
-						nMesh.position.y = spritePlaneMaterial.CWSData.cellHeight / 2;
-						nMesh.position.y += spritePlaneMaterial.CWSData.worldPositionZ - 1;
-						nMesh.rotateY(Math.PI);
-						sprite.add(nMesh);
-					}
-					
-					if(spritePlaneMaterial.CWSData.visibilityOnWest)
-					{
-						var wMesh = new THREE.Mesh(spritePlane, spritePlaneMaterial);
-						wMesh.position.x = SCALE * -0.5;
-						wMesh.position.y = spritePlaneMaterial.CWSData.cellHeight / 2;
-						wMesh.position.y += spritePlaneMaterial.CWSData.worldPositionZ - 1;
-						wMesh.rotateY(Math.PI * -0.5);
-						sprite.add(wMesh);
-					}
-					
-					if(spritePlaneMaterial.CWSData.visibilityOnEast)
-					{
-						var eMesh = new THREE.Mesh(spritePlane, spritePlaneMaterial);
-						eMesh.position.x = SCALE * 0.5;
-						eMesh.position.y = spritePlaneMaterial.CWSData.cellHeight / 2;
-						eMesh.position.y += spritePlaneMaterial.CWSData.worldPositionZ - 1;
-						eMesh.rotateY(Math.PI * 0.5);
-						sprite.add(eMesh);
-					}
-					
-					if(spritePlaneMaterial.CWSData.visibilityOnSouth)
-					{
-						var sMesh = new THREE.Mesh(spritePlane, spritePlaneMaterial);
-						sMesh.position.z = SCALE * 0.5;
-						sMesh.position.y = spritePlaneMaterial.CWSData.cellHeight / 2;
-						sMesh.position.y += spritePlaneMaterial.CWSData.worldPositionZ - 1;
-						sprite.add(sMesh);
-					}
-				}
-				
-				if(sprite.material.map) sprite.material.map.offset.y = ((sprite.material.CWSData.cellCount - 1) / sprite.material.CWSData.cellCount);
-				
-				sprite.material.currentDisplayTime = 0;
-				sprite.material.currentTile = 0;
-								
-				sprite.material.update = function(milliSec,direction)
-				{
-					if(this.CWSData.animateOnLoading)
-					{
-						this.currentDisplayTime += milliSec;
-						while (this.currentDisplayTime > this.CWSData.frameDurations[this.currentTile])
-						{
-							this.currentDisplayTime -= this.CWSData.frameDurations[this.currentTile];
-							this.currentTile++;
-							if (this.currentTile == this.CWSData.frameCount)
-								this.currentTile = 0;
-							if(this.map) this.map.offset.y = (this.CWSData.frameCount - 1 - this.currentTile) / this.CWSData.frameCount;
-						}
-					}
-					else if(this.CWSData.multiSided)
-					{												
-						var angleToIndex = Math.round((direction / 360) * this.CWSData.sides) % this.CWSData.sides;
-												
-						if(this.map) this.map.offset.y = (this.CWSData.sides - 1 - angleToIndex) / this.CWSData.sides;
-					}
-				};
-				
-				scene.add(sprite);
+				spawnSprite(x,y,spriteMaterial);
 			}
 			if(borgData.grid[y][x]["NOWALK"] > 0)
 			{
@@ -810,17 +895,17 @@ function generateMap(scene,borgData,textureData)
 	
 	//All of the triggers are laid, so we're going to check for any adjacent triggers
 	triggers.map(trigger => trigger.updateAdjacencies());
+}
+
+function newMaterial(template)
+{
+	var createdMaterial = template.clone();
+	/*createdMaterial.map = template.map.clone();
+	createdMaterial.map.needsUpdate = true;*/
 	
-	function newMaterial(template)
-	{
-		var createdMaterial = template.clone();
-		/*createdMaterial.map = template.map.clone();
-		createdMaterial.map.needsUpdate = true;*/
-		
-		createdMaterial.CWSData = template.CWSData;
-				
-		return createdMaterial;
-	}
+	createdMaterial.CWSData = template.CWSData;
+			
+	return createdMaterial;
 }
 
 function markLine(position,color)

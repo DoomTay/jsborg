@@ -1,4 +1,5 @@
-function CWSpriteLoader(manager) {
+function CWSpriteLoader(manager)
+{
 	this.manager = (manager !== undefined) ? manager : THREE.DefaultLoadingManager;
 }
 
@@ -72,7 +73,8 @@ CWSpriteLoader.prototype =
 					
 					var imageTag = new Image();
 					imageTag.src = window.URL.createObjectURL(blob);
-					imageTag.onload = function() {
+					imageTag.onload = function()
+					{
 						ctx.drawImage(imageTag,0,0);
 						var transparentColor = ctx.getImageData(0, 0, 1, 1).data;
 						
@@ -151,7 +153,8 @@ CWSpriteLoader.prototype =
 					
 					var imageTag = new Image();
 					imageTag.src = window.URL.createObjectURL(blob);
-					imageTag.onload = function() {
+					imageTag.onload = function()
+					{
 						ctx.drawImage(imageTag,0,0);
 						var transparentColor = ctx.getImageData(0, 0, 1, 1).data;
 						
@@ -315,7 +318,8 @@ CWSpriteLoader.prototype =
 		{
 			fileLoader.load(
 			url,
-			function(data) {				
+			function(data)
+			{				
 				var dataBits = data.split("\r\n");
 								
 				var dataObject = {};
@@ -394,12 +398,14 @@ CWSpriteLoader.prototype =
 		return this;
 	},
 
-	setWithCredentials: function(value) {
+	setWithCredentials: function(value)
+	{
 		this.withCredentials = value;
 		return this;
 	},
 
-	setPath: function(value) {
+	setPath: function(value)
+	{
 		this.path = value;
 		return this;
 	}

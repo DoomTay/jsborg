@@ -1,7 +1,7 @@
 # jsborg
 JavaScript reader and explorer for [CYBERWORLD](http://wayback.archive.org/web/20030202000627/http://www.cyberworldcorp.com/) QBORGs, first started on November 8, 2016
 
-This project makes use of [three.js](https://github.com/mrdoob/three.js/) and [pako](https://github.com/nodeca/pako).
+This project makes use of [three.js](https://github.com/mrdoob/three.js/).
 
 The [main viewer](qborgprototype.html) only works with local files, and depends on a hardcoded path defined at the top of [jsborg.js](scripts/jsborg.js).
 

@@ -51,23 +51,7 @@ CWSpriteLoader.prototype =
 						offset += 4;
 						var chunkCode = bytesToString(getBytes(dataView.buffer,offset,4));
 						offset += 4;
-						if(chunkCode == "IDAT")
-						{
-							if(!additionalData.pixelData) additionalData.pixelData = [];
-							additionalData.pixelData = additionalData.pixelData.concat(Array.from(getBytes(dataView.buffer,offset,byteCount)));
-							offset += byteCount;
-						}
-						else if(chunkCode == "PLTE")
-						{
-							additionalData.palette = [];
-							for(var i = 0; i < byteCount; i += 3)
-							{
-								additionalData.palette.push({r:dataView.getUint8(offset + i),g:dataView.getUint8(offset + i + 1),b:dataView.getUint8(offset + i + 2)});
-							}
-							
-							offset += byteCount;
-						}
-						else if(chunkCode == "cxBX")
+						if(chunkCode == "cxBX")
 						{
 							var startingPoint = offset;
 							var marker = bytesToString(getBytes(dataView.buffer,offset,4));
@@ -79,73 +63,29 @@ CWSpriteLoader.prototype =
 						offset += 4;
 					}
 					
-					if(additionalData.pixelData)
-					{
-						additionalData.pixelData = Uint8Array.from(additionalData.pixelData);
-						var compressed = additionalData.pixelData;
-						var inflated = pako.inflate(compressed);
-						
-						var scanline;
-						
-						var pixelData = [];
-						
-						var colorsPerRow = additionalData.cellWidth;
-						
-						var subOffset = 0;
-						
-						for(var i = 0; i < inflated.length; i += colorsPerRow + 1)
-						{
-							scanline = inflated.slice(i + 1, i + colorsPerRow + 1);	
-							
-							for (var o = 0, to = colorsPerRow; o < to; o++){
-								pixelData[subOffset + o] = scanline[o];
-							}
-							
-							subOffset += colorsPerRow;
-						}
-						
-						additionalData.pixelData = pixelData;
-						
-						additionalData.transparencyIndex = pixelData[0];
-					}
-					
 					var transparentSprite = document.createElement('canvas');
 					transparentSprite.width = additionalData.cellWidth || additionalData.worldWidth;
 					transparentSprite.height = additionalData.cellHeight * additionalData.cellCount || additionalData.worldHeight;
 					var ctx = transparentSprite.getContext('2d');
 					
-					if(additionalData.pixelData)
-					{
-						for(var i = 0; i < transparentSprite.height; i++)
+					var blob = new Blob([ dataView.buffer ], { type: "image/png" });
+					
+					var imageTag = new Image();
+					imageTag.src = window.URL.createObjectURL(blob);
+					imageTag.onload = function() {
+						ctx.drawImage(imageTag,0,0);
+						var transparentColor = ctx.getImageData(0, 0, 1, 1).data;
+						
+						var imgData = ctx.getImageData(0,0,transparentSprite.width,transparentSprite.height);
+						var data = imgData.data;
+						
+						for(var i = 0; i < data.length; i += 4)
 						{
-							for(var f = 0; f < transparentSprite.width; f++)
-							{
-								var currentIndex = additionalData.pixelData[(transparentSprite.width * i) + f];
-								if(currentIndex == additionalData.transparencyIndex) continue;
-								var currentColor = additionalData.palette[currentIndex];
-								ctx.fillStyle = "rgb("+currentColor.r+","+currentColor.g+","+currentColor.b+")";
-								ctx.fillRect(f, transparentSprite.height - i - 1,1,1);
-							}
+							if(data[i] == transparentColor[0] && data[i + 1] == transparentColor[1] && data[i + 2] == transparentColor[2]) data[i + 3] = 0;
 						}
-					}
-					else
-					{
-						ctx.fillStyle = "rgb(255,255,255)";
-						ctx.fillRect(0, 0,transparentSprite.width,transparentSprite.height);
-					}
-					
-					var indexToColors = [];
-					
-					for(var o = 0; o < additionalData.pixelData.length; o++)
-					{
-						var alpha = 255;
-						var currentIndex = additionalData.pixelData[o];
-						if(currentIndex == additionalData.transparencyIndex) alpha = 0;
-						var currentColor = additionalData.palette[currentIndex];
-						indexToColors.push(currentColor.r,currentColor.g,currentColor.b,alpha);
-					}
-										
-					newTextureFromData(indexToColors);
+						
+						newTextureFromData(data);
+					};
 				}
 				else if(fileType == "jpeg")
 				{
@@ -212,11 +152,8 @@ CWSpriteLoader.prototype =
 					var imageTag = new Image();
 					imageTag.src = window.URL.createObjectURL(blob);
 					imageTag.onload = function() {
-						ctx.translate(0, transparentSprite.height);
-						//Part of the reason we're making a canvas is it's easier to flip the image this way
-						ctx.scale(1, -1);
 						ctx.drawImage(imageTag,0,0);
-						var transparentColor = ctx.getImageData(0, transparentSprite.height - 1, 1, 1).data;
+						var transparentColor = ctx.getImageData(0, 0, 1, 1).data;
 						
 						var imgData = ctx.getImageData(0,0,transparentSprite.width,transparentSprite.height);
 						var data = imgData.data;
@@ -227,9 +164,7 @@ CWSpriteLoader.prototype =
 							if(data[i] == transparentColor[0] && data[i + 1] == transparentColor[1] && data[i + 2] == transparentColor[2]) data[i + 3] = 0;
 						}
 						
-						ctx.putImageData(imgData, 0, 0);
-						
-						createMaterial(transparentSprite.toDataURL());
+						newTextureFromData(data);
 					};
 				}
 				else createBlankCanvas();
@@ -432,31 +367,6 @@ CWSpriteLoader.prototype =
 		else
 		{
 			console.warn("Unknown file type:",url);
-		}
-		
-		function createMaterial(newURL)
-		{
-			var spriteTex = new THREE.Texture();
-			
-			var image = new Image();
-			image.onload = function()
-			{
-				spriteTex.image = image;
-				spriteTex.needsUpdate = true;
-				
-				var material = new THREE.SpriteMaterial({map: spriteTex, alphaTest: 0.5});
-				
-				material.CWSData = additionalData;
-				
-				material.map.magFilter = THREE.NearestFilter;
-				material.map.minFilter = THREE.NearestFilter;
-				
-				material.map.repeat.y = 1/additionalData.frameCount;
-				material.map.offset.y = 0;
-				
-				if (onLoad !== undefined) onLoad(material);
-			};
-			image.src = newURL;
 		}
 		
 		function newTextureFromData(data)

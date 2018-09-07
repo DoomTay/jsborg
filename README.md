@@ -12,4 +12,11 @@ This has been tested with
 * [Zeta Quest 3D](http://web.archive.org/web/20020706213551/http://www2.warnerbros.com/web/zeta-kids/quest.jsp)
 * [The Olympiad](http://web.archive.org/web/20021204151916/http://www.cyberworldcorp.com:80/new/featureworlds/featworlds_cs_olympiad.asp)
 
-QBORG &copy; 1999-2003 CYBERWORLD International Corporation 
+## How to use
+1. Extract the contents somewhere
+2. Download the files of a QBORG project like any of the above and place them somewhere in the jsborg folder, with folders intact
+3. Go into `jsborg.js` and change the `borgPath` variable to point to the main folder of the QBORG project
+4. Open up `qborgprototype.html`
+5. Select the desired .borg file
+
+QBORG &copy; 1999-2003 CYBERWORLD International Corporation

@@ -81,6 +81,7 @@ CWSpriteLoader.prototype =
 						var imgData = ctx.getImageData(0,0,transparentSprite.width,transparentSprite.height);
 						var data = imgData.data;
 						
+						//Modify pixel data so that instances of the "transparent color" will actually be transparent. 
 						for(var i = 0; i < data.length; i += 4)
 						{
 							if(data[i] == transparentColor[0] && data[i + 1] == transparentColor[1] && data[i + 2] == transparentColor[2]) data[i + 3] = 0;
@@ -377,8 +378,8 @@ CWSpriteLoader.prototype =
 		{
 			var dataTex = new THREE.DataTexture(Uint8Array.from(data),additionalData.cellWidth,additionalData.cellHeight * additionalData.cellCount,THREE.RGBAFormat, THREE.UnsignedByteType,THREE.UVMapping);
 			dataTex.needsUpdate = true;
-						
-			var material = new THREE.SpriteMaterial({ map: dataTex, alphaTest: 0.5 });
+			
+			var material = new THREE.SpriteMaterial({map: dataTex, alphaTest: 0.5});
 				
 			material.CWSData = additionalData;
 			

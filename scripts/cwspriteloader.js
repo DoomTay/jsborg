@@ -162,7 +162,7 @@ CWSpriteLoader.prototype =
 						var imgData = ctx.getImageData(0,0,transparentSprite.width,transparentSprite.height);
 						var data = imgData.data;
 						
-						//Modify pixel data so that instances of the "transparent color" will actually be transparent. Since this is a JPEG, the result will be less than perfect; the real reference for transparency in JPEG sprites is stored in a different chunk elsewhere in the image. Unfornately, I have no idea how to read said chunk.
+						//Modify pixel data so that instances of the "transparent color" will actually be transparent. Since this is a JPEG, the result will be less than perfect; the real reference for transparency in JPEG sprites is stored in a different chunk elsewhere in the image. Unfortunately, I have no idea how to read said chunk.
 						for(var i = 0; i < data.length; i += 4)
 						{
 							if(data[i] == transparentColor[0] && data[i + 1] == transparentColor[1] && data[i + 2] == transparentColor[2]) data[i + 3] = 0;

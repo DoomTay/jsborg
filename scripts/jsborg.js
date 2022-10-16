@@ -1,12 +1,6 @@
 var loader = new THREE.TextureLoader();
 var audioLoader = new THREE.AudioLoader();
 var SCALE = 256;
-//The path of the submitted .borg file relative to the main page. Needed because we will need to load other files that are descended from this path
-//Is it possible to get the path of a submitted file without having to hardcode it? Probably not without disabling important security settings.
-//var borgPath = "compiledtest/";
-//var borgPath = "p2kfixed/game/borgs/";
-//var borgPath = "zeta/borgs/"
-//var borgPath = "Gallery/worlds/olympiad/"
 var triggers = [];
 var walls = [];
 

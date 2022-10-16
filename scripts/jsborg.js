@@ -6,7 +6,7 @@ var SCALE = 256;
 //var borgPath = "compiledtest/";
 //var borgPath = "p2kfixed/game/borgs/";
 //var borgPath = "zeta/borgs/"
-var borgPath = "Gallery/worlds/olympiad/"
+//var borgPath = "Gallery/worlds/olympiad/"
 var triggers = [];
 var walls = [];
 

@@ -51,7 +51,8 @@
 </head>
 
 <body>
-	<input onchange="loadBorg()" type="file" accept=".borg" ><br>
+	<input type="url">
+	<input type="button" value="Go" onclick="loadBorg()"><br>
 	<iframe name="sidePanel" id="sidePanel" src="CWSide.html" width="256" height="512" align="right"></iframe>
 	<div id="borgDisplay"></div>
 	<div id="hud">
@@ -97,337 +98,351 @@
 		var currentMusic = "";
 		var scene = new THREE.Scene();
 		var renderId = null;
+		var borgPath = "";
 		
 		var omniSound = new THREE.Audio(listener);
 		
 		function loadBorg()
 		{
-			var reader = new FileReader();
-			var file = document.querySelector('input[type=file]').files[0];
+			var borgUrl = document.querySelector('input[type=url]').value;
+			
 			var windowWidth = 512;
 			var windowHeight = 512;
-			reader.addEventListener("load", function(e)
-			{
-				cancelAnimationFrame(renderId);
-				scene = new THREE.Scene();
-				borgDisplay.innerHTML = "";
-				var contents = (new DOMParser() ).parseFromString( e.target.result, "text/xml").childNodes[0];
-				borg = parseBorg(contents);
-				console.log(file);
-				emb.style.backgroundImage = "url('" + borgPath + "domains/" + borg.emb + "')";
-				nav.style.backgroundImage = "url('" + borgPath + "domains/" + borg.nav + "')";
-				
-				var playerCoords = contents.getElementsByTagName("gen")[0].getElementsByTagName("pos")[0].textContent.trim().split(" ");
-								
-				var playerX = (parseInt(playerCoords[0],16) / 1024) * 16;
-				var playerY = 16 - (parseInt(playerCoords[1],16) / 1024) * 16;
-				var height = parseInt(playerCoords[2],16) * 4;
-				
-				var angle = -(((parseInt(playerCoords[3],16) / 4096) * 360) - 270);
-				if(angle < 0) angle += 360;
-				
-				scene = new THREE.Scene();
-				
-				player = new THREE.Mesh(new THREE.BoxGeometry(SCALE / 4, SCALE / 4, SCALE / 4), new THREE.MeshBasicMaterial({ wireframe:true}));
-				player.position.x = playerX * SCALE - (SCALE / 2);
-				player.position.z = playerY * SCALE - (SCALE / 2);
-				player.position.y = (SCALE / 8) - 32 + height;
-				scene.add(player);
-				var playerTrigger = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
-				
-				var camera = new THREE.PerspectiveCamera(windowWidth / 17, windowWidth / windowHeight, 0.1, 4000);
-				camera.rotation.order = "YXZ";
-				camera.rotation.y = angle * (Math.PI/180);
-				player.add(camera);
-				camera.add(listener);
-				
-				var bgMesh;
-				
-				if(borg.bgGraphic)
+			
+			var borgLoader = new THREE.FileLoader();
+			
+			borgLoader.load(borgUrl,
+				function(data)
 				{
-					var backgroundTexture = loader.load(borgPath + "domains/" + borg.bgGraphic,
-					function (skyTexture)
-					{
-						bgMesh = new THREE.Mesh(
-							new THREE.PlaneGeometry((skyTexture.image.width / (windowWidth / 2)), (skyTexture.image.height / (windowWidth / 2)), 0),
-							new THREE.MeshBasicMaterial({map: skyTexture})
-						);
-						
-						var skyHeight = ((skyTexture.image.height / 2) / (windowWidth / 2));
-						
-						skyTexture.wrapS = THREE.RepeatWrapping;
-						
-						var initialOffset = skyHeight + (borg.bgHeight / (windowWidth / 2));
-						
-						bgMesh.position.y += initialOffset;
-						
-						bgMesh.material.depthTest = false;
-						bgMesh.material.depthWrite = false;
-						bgScene.add(bgMesh);
-						
-						var skyCanvas = document.createElement("canvas");
-						skyCanvas.width = skyTexture.image.width;
-						skyCanvas.height = skyTexture.image.height;
-						skyCanvas.getContext('2d').drawImage(skyTexture.image, 0, 0);
-						var topSky = skyCanvas.getContext('2d').getImageData(0, 0, 1, 1).data;
-						var bottomSky = skyCanvas.getContext('2d').getImageData(0, skyTexture.image.height - 1, 1, 1).data;
-						
-						var topMesh = new THREE.Mesh(
-							new THREE.PlaneGeometry((skyTexture.image.width / (windowWidth / 2)), (skyTexture.image.width / (windowWidth / 2)), 0),
-							new THREE.MeshBasicMaterial({color: new THREE.Color(topSky[0]/255,topSky[1]/255,topSky[2]/255), alpha: 0.5})
-						);
-						
-						topMesh.position.y += initialOffset + ((skyTexture.image.width - ((skyTexture.image.width - skyTexture.image.height) / 2)) /  (windowWidth / 2));
-						topMesh.material.depthTest = false;
-						topMesh.material.depthWrite = false;
-						bgScene.add(topMesh);
-													
-						var bottomMesh = new THREE.Mesh(
-							new THREE.PlaneGeometry((skyTexture.image.width / (windowWidth / 2)), (skyTexture.image.width / (windowWidth / 2)), 0),
-							new THREE.MeshBasicMaterial({color: new THREE.Color(bottomSky[0]/255,bottomSky[1]/255,bottomSky[2]/255)})
-						);
-												
-						bottomMesh.position.y += initialOffset - ((skyTexture.image.width - ((skyTexture.image.width - skyTexture.image.height) / 2)) /  (windowWidth / 2));
-						bottomMesh.material.depthTest = false;
-						bottomMesh.material.depthWrite = false;
-						bgScene.add(bottomMesh);
-					},
-					function(e) {},
-					function(e)
-					{
-						console.error("Sky texture not found","\n",e);
-					});
-				}
-				
-				var bgScene = new THREE.Scene();
-				var bgCam = new THREE.Camera();
-				bgScene.add(bgCam);
-				
-				renderBorg(scene,borg,bgScene);
+					borgPath = borgUrl.substring(0,borgUrl.lastIndexOf("/") + 1);
+					cancelAnimationFrame(renderId);
+					scene = new THREE.Scene();
+					borgDisplay.innerHTML = "";
+					var contents = (new DOMParser()).parseFromString( data, "text/xml").childNodes[0];
+					borg = parseBorg(contents);
+					emb.style.backgroundImage = "url('" + borgPath + "domains/" + borg.emb + "')";
+					nav.style.backgroundImage = "url('" + borgPath + "domains/" + borg.nav + "')";
+					
+					var playerCoords = contents.getElementsByTagName("gen")[0].getElementsByTagName("pos")[0].textContent.trim().split(" ");
 									
-				var renderer = new THREE.WebGLRenderer();
-				renderer.setSize(windowWidth, windowHeight);
-				renderer.sortObjects = false;
-				borgDisplay.appendChild(renderer.domElement);
-				
-				changeGTW2(borg.defaultPage);
-				
-				renderer.domElement.addEventListener('mousemove', onMouseMove, false);
-				
-				function onMouseMove(event)
-				{
-					var offset = event.target.getBoundingClientRect();
-					mouse.x = ((event.clientX - offset.left) / windowWidth) * 2 - 1;
-					mouse.y = - ((event.clientY - offset.top) / windowHeight) * 2 + 1;
-				}
-				
-				function onMouseClick(event)
-				{
-					onMouseMove(event);
-					/*var mouseOvers = raycaster.intersectObjects(mouseTriggers,true);
-					if(mouseOvers.length > 0)
+					var playerX = (parseInt(playerCoords[0],16) / 1024) * 16;
+					var playerY = 16 - (parseInt(playerCoords[1],16) / 1024) * 16;
+					var height = parseInt(playerCoords[2],16) * 4;
+					
+					var angle = -(((parseInt(playerCoords[3],16) / 4096) * 360) - 270);
+					if(angle < 0) angle += 360;
+					
+					scene = new THREE.Scene();
+					
+					player = new THREE.Mesh(new THREE.BoxGeometry(SCALE / 4, SCALE / 4, SCALE / 4), new THREE.MeshBasicMaterial({ wireframe:true}));
+					player.position.x = playerX * SCALE - (SCALE / 2);
+					player.position.z = playerY * SCALE - (SCALE / 2);
+					player.position.y = (SCALE / 8) - 32 + height;
+					scene.add(player);
+					var playerTrigger = new THREE.Box3(new THREE.Vector3(), new THREE.Vector3());
+					
+					var camera = new THREE.PerspectiveCamera(windowWidth / 17, windowWidth / windowHeight, 0.1, 4000);
+					camera.rotation.order = "YXZ";
+					camera.rotation.y = angle * (Math.PI/180);
+					player.add(camera);
+					camera.add(listener);
+					
+					var bgMesh;
+					
+					if(borg.bgGraphic)
 					{
-						var clickedOn = mouseOvers[0].object;
-						clickedOn.onClick();
-					}*/
-					
-					var mouseHit = getMousedOverElement();
-					if(mouseHit)
-					{
-						mouseHit.onClick();
-					}
-				}
-				
-				renderer.domElement.addEventListener('click', onMouseClick, false);
-				
-				var occupiedTriggers = [];
-				
-				function getMousedOverElement()
-				{
-					//A small trick to ensure that if the mouse is over an object that happens to be in front of a mouseTrigger, that mouseTrigger will not be detected
-					var mouseOvers = raycaster.intersectObjects(scene.children,true);
-					
-					var mouseOver = mouseOvers.find((hit) => mouseTriggers.includes(hit.object) || mouseTriggers.includes(hit.object.parent));
-					//var mouseOver = mouseOvers[0];
-					
-					if(mouseOver) return [mouseOver.object, mouseOver.object.parent].find(thing => thing.onClick);
-					else return undefined;
-				}
-				
-				var prevTime;
-				
-				function render(time)
-				{
-					renderId = requestAnimationFrame(render);
-					
-					var delta = time - prevTime;
-						
-					prevTime = time;
-											
-					playerIndicator.style.left = ((player.position.x / SCALE) / 16) * 144 + 2.5 + "px";
-					playerIndicator.style.top = ((player.position.z / SCALE) / 16) * 144 + 2.5 + "px";
-					
-					var sprites = scene.children.filter(child => child.type == "Sprite" || child.type == "SpriteOnWall");
-					
-					raycaster.setFromCamera(mouse, camera);
-					
-					/*var mouseOvers = raycaster.intersectObjects(mouseTriggers).filter(function(hit)
-					{
-						if(hit.object.type == "Sprite")
+						var backgroundTexture = loader.load(borgPath + "domains/" + borg.bgGraphic,
+						function (skyTexture)
 						{
-							return true;
-						}
-						else return true;
-					});*/
-															
-					mouseTriggers.map(object =>
-					{
-						//object.material.color.set("white");
-						borgDisplay.style.cursor = "auto";
-					});
-					
-					var mouseHit = getMousedOverElement();
-					if(mouseHit)
-					{
-						//mouseHit.material.color.set("red");
-						borgDisplay.style.cursor = "pointer";
-					}
-										
-					sprites.map(sprite => 
-					{
-						var positionDifference = new THREE.Vector3;
-						positionDifference.subVectors(player.position,sprite.position);
-						
-						var direction = (Math.atan2(positionDifference.z,positionDifference.x) / (Math.PI / 180)) + 180;
-						
-						if(direction < 0) direction += 360;
-						if(direction > 360) direction -= 360;
-						
-						if(sprite.material.update) sprite.material.update(delta,direction)
-					});
-					
-					var camDir = camera.getWorldDirection();
-					
-					keyboard.update();
-					if (keyboard.pressed("left"))
-					{
-						camera.rotation.y += 0.02;
-						if(camera.rotation.y > (2 * Math.PI)) camera.rotation.y -= (2 * Math.PI);
-					}
-					
-					if (keyboard.pressed("right"))
-					{
-						camera.rotation.y -= 0.02;
-						if(camera.rotation.y < 0) camera.rotation.y += (2 * Math.PI);
-					}
-						
-					if (keyboard.pressed("up"))
-					{
-						player.position.addScaledVector(new THREE.Vector3(camDir.x,0,camDir.z),0.1 * SCALE);
-						
-					}
-					if (keyboard.pressed("down"))
-					{
-						player.position.addScaledVector(new THREE.Vector3(camDir.x,0,camDir.z),-0.1 * SCALE);
-					}
-					
-					if (keyboard.pressed("A"))
-					{
-						player.position.x -= 5 * Math.cos(camera.rotation.y);
-						player.position.z += 5 * Math.sin(camera.rotation.y);
-					}
-					if (keyboard.pressed("D"))
-					{
-						player.position.x += 5 * Math.cos(camera.rotation.y);
-						player.position.z -= 5 * Math.sin(camera.rotation.y);
-					}
-					
-					if (keyboard.pressed("pageup") && camera.rotation.x < (Math.PI / 5))
-					{
-						camera.rotation.x += 0.015;
-						bgCam.position.y += 0.015 * 3.84;
-					}
-					if (keyboard.pressed("pagedown") && camera.rotation.x > -(Math.PI / 5))
-					{
-						camera.rotation.x -= 0.015;
-						bgCam.position.y -= 0.015 * 3.84;
-					}
-					playerTrigger.setFromObject(player);
-										
-					if(bgMesh) bgMesh.material.map.offset.x = -camera.rotation.y / (0.5 * Math.PI) + 0.5;
-					
-					var originPoint = player.position.clone();
-					
-					for(var v = 0; v < player.geometry.vertices.length; v++)
-					{       
-						var localVertex = player.geometry.vertices[v].clone();
-						var globalVertex = localVertex.applyMatrix4(player.matrix);
-						var directionVector = globalVertex.sub(player.position);
-						
-						var ray = new THREE.Raycaster(originPoint, directionVector.clone().normalize());
-						var collisionResults = ray.intersectObjects(walls);
-						
-						collisionResults.map(result =>
-						{
-							if(result.distance < borg.initialSpeed)
-							{
-								var force = (directionVector.length() - result.distance) / player.geometry.vertices.length;
-								var collisionDir = result.face.normal;
-								player.position.addScaledVector(new THREE.Vector3(collisionDir.x,0,collisionDir.z),force);
-							}
-						})
-					}
-										
-					var triggerRay = new THREE.Raycaster(originPoint, new THREE.Vector3(0,-1,0));
-					var steppingOnTriggers = triggerRay.intersectObjects(triggers).map(hit => hit.object);
-										
-					var steppedOffTriggers = triggers.filter(trigger => !steppingOnTriggers.includes(trigger) && occupiedTriggers.includes(trigger) && trigger.triggered == true);
-					
-					if(omniSound.isPlaying)
-					{
-						var steppingOnAudio = steppingOnTriggers.filter(trigger => trigger.soundRef || trigger.soundBox);
-						steppingOnAudio.map(trigger => trigger.triggered = false);
-						steppingOnTriggers = steppingOnTriggers.filter(trigger => !steppingOnAudio.includes(trigger));
-												
-						if(player.position.x < omniSound.startingPosition.x - (SCALE / 2) || player.position.x > omniSound.startingPosition.x + (SCALE / 2) || player.position.z < omniSound.startingPosition.z - (SCALE / 2) || player.position.z > omniSound.startingPosition.z + (SCALE / 2)) omniSound.stop();
-					}
-					
-					steppedOffTriggers.map(steppedOffTrigger => 
-					{
-						steppedOffTrigger.checkCluster(function(cluster)
-						{
-							var stillActive = cluster.some(otherTrigger => steppingOnTriggers.includes(otherTrigger));
-							if(!stillActive)
-							{
-								steppedOffTrigger.onLeave(player);
-								occupiedTriggers.splice(occupiedTriggers.indexOf(steppedOffTrigger),1);
-							}
+							bgMesh = new THREE.Mesh(
+								new THREE.PlaneGeometry((skyTexture.image.width / (windowWidth / 2)), (skyTexture.image.height / (windowWidth / 2)), 0),
+								new THREE.MeshBasicMaterial({map: skyTexture})
+							);
 							
+							var skyHeight = ((skyTexture.image.height / 2) / (windowWidth / 2));
+							
+							skyTexture.wrapS = THREE.RepeatWrapping;
+							
+							var initialOffset = skyHeight + (borg.bgHeight / (windowWidth / 2));
+							
+							bgMesh.position.y += initialOffset;
+							
+							bgMesh.material.depthTest = false;
+							bgMesh.material.depthWrite = false;
+							bgScene.add(bgMesh);
+							
+							var skyCanvas = document.createElement("canvas");
+							skyCanvas.width = skyTexture.image.width;
+							skyCanvas.height = skyTexture.image.height;
+							skyCanvas.getContext('2d').drawImage(skyTexture.image, 0, 0);
+							var topSky = skyCanvas.getContext('2d').getImageData(0, 0, 1, 1).data;
+							var bottomSky = skyCanvas.getContext('2d').getImageData(0, skyTexture.image.height - 1, 1, 1).data;
+							
+							var topMesh = new THREE.Mesh(
+								new THREE.PlaneGeometry((skyTexture.image.width / (windowWidth / 2)), (skyTexture.image.width / (windowWidth / 2)), 0),
+								new THREE.MeshBasicMaterial({color: new THREE.Color(topSky[0]/255,topSky[1]/255,topSky[2]/255), alpha: 0.5})
+							);
+							
+							topMesh.position.y += initialOffset + ((skyTexture.image.width - ((skyTexture.image.width - skyTexture.image.height) / 2)) /  (windowWidth / 2));
+							topMesh.material.depthTest = false;
+							topMesh.material.depthWrite = false;
+							bgScene.add(topMesh);
+														
+							var bottomMesh = new THREE.Mesh(
+								new THREE.PlaneGeometry((skyTexture.image.width / (windowWidth / 2)), (skyTexture.image.width / (windowWidth / 2)), 0),
+								new THREE.MeshBasicMaterial({color: new THREE.Color(bottomSky[0]/255,bottomSky[1]/255,bottomSky[2]/255)})
+							);
+													
+							bottomMesh.position.y += initialOffset - ((skyTexture.image.width - ((skyTexture.image.width - skyTexture.image.height) / 2)) /  (windowWidth / 2));
+							bottomMesh.material.depthTest = false;
+							bottomMesh.material.depthWrite = false;
+							bgScene.add(bottomMesh);
+						},
+						function(e) {},
+						function(e)
+						{
+							console.error("Sky texture not found","\n",e);
 						});
-					});
+					}
 					
-					steppingOnTriggers.map(trigger =>
+					var bgScene = new THREE.Scene();
+					var bgCam = new THREE.Camera();
+					bgScene.add(bgCam);
+					
+					renderBorg(scene,borg,bgScene);
+										
+					var renderer = new THREE.WebGLRenderer();
+					renderer.setSize(windowWidth, windowHeight);
+					renderer.sortObjects = false;
+					borgDisplay.appendChild(renderer.domElement);
+					
+					changeGTW2(borg.defaultPage);
+					
+					renderer.domElement.addEventListener('mousemove', onMouseMove, false);
+					
+					function onMouseMove(event)
 					{
-						if(trigger.triggered == false) occupiedTriggers.push(trigger);
-						trigger.onEnter(player);
-					})
+						var offset = event.target.getBoundingClientRect();
+						mouse.x = ((event.clientX - offset.left) / windowWidth) * 2 - 1;
+						mouse.y = - ((event.clientY - offset.top) / windowHeight) * 2 + 1;
+					}
 					
-					updateAll(scene);
+					function onMouseClick(event)
+					{
+						onMouseMove(event);
+						/*var mouseOvers = raycaster.intersectObjects(mouseTriggers,true);
+						if(mouseOvers.length > 0)
+						{
+							var clickedOn = mouseOvers[0].object;
+							clickedOn.onClick();
+						}*/
+						
+						var mouseHit = getMousedOverElement();
+						if(mouseHit)
+						{
+							mouseHit.onClick();
+						}
+					}
 					
-					renderer.autoClear = false;
-					renderer.clear();
-					renderer.render(bgScene, bgCam);
-					renderer.render(scene, camera);
-				}
-				render();
-				
-				function updateAll(origin)
+					renderer.domElement.addEventListener('click', onMouseClick, false);
+					
+					var occupiedTriggers = [];
+					
+					function getMousedOverElement()
+					{
+						//A small trick to ensure that if the mouse is over an object that happens to be in front of a mouseTrigger, that mouseTrigger will not be detected
+						var mouseOvers = raycaster.intersectObjects(scene.children,true);
+						
+						var mouseOver = mouseOvers.find((hit) => mouseTriggers.includes(hit.object) || mouseTriggers.includes(hit.object.parent));
+						//var mouseOver = mouseOvers[0];
+						
+						if(mouseOver) return [mouseOver.object, mouseOver.object.parent].find(thing => thing.onClick);
+						else return undefined;
+					}
+					
+					var prevTime;
+					
+					function render(time)
+					{
+						renderId = requestAnimationFrame(render);
+						
+						var delta = time - prevTime;
+							
+						prevTime = time;
+												
+						playerIndicator.style.left = ((player.position.x / SCALE) / 16) * 144 + 2.5 + "px";
+						playerIndicator.style.top = ((player.position.z / SCALE) / 16) * 144 + 2.5 + "px";
+						
+						var sprites = scene.children.filter(child => child.type == "Sprite" || child.type == "SpriteOnWall");
+						
+						raycaster.setFromCamera(mouse, camera);
+						
+						/*var mouseOvers = raycaster.intersectObjects(mouseTriggers).filter(function(hit)
+						{
+							if(hit.object.type == "Sprite")
+							{
+								return true;
+							}
+							else return true;
+						});*/
+																
+						mouseTriggers.map(object =>
+						{
+							//object.material.color.set("white");
+							borgDisplay.style.cursor = "auto";
+						});
+						
+						var mouseHit = getMousedOverElement();
+						if(mouseHit)
+						{
+							//mouseHit.material.color.set("red");
+							borgDisplay.style.cursor = "pointer";
+						}
+											
+						sprites.map(sprite => 
+						{
+							var positionDifference = new THREE.Vector3;
+							positionDifference.subVectors(player.position,sprite.position);
+							
+							var direction = (Math.atan2(positionDifference.z,positionDifference.x) / (Math.PI / 180)) + 180;
+							
+							if(direction < 0) direction += 360;
+							if(direction > 360) direction -= 360;
+							
+							if(sprite.material.update) sprite.material.update(delta,direction)
+						});
+						
+						var camDir = camera.getWorldDirection();
+						
+						keyboard.update();
+						if (keyboard.pressed("left"))
+						{
+							camera.rotation.y += 0.02;
+							if(camera.rotation.y > (2 * Math.PI)) camera.rotation.y -= (2 * Math.PI);
+						}
+						
+						if (keyboard.pressed("right"))
+						{
+							camera.rotation.y -= 0.02;
+							if(camera.rotation.y < 0) camera.rotation.y += (2 * Math.PI);
+						}
+							
+						if (keyboard.pressed("up"))
+						{
+							player.position.addScaledVector(new THREE.Vector3(camDir.x,0,camDir.z),0.1 * SCALE);
+							
+						}
+						if (keyboard.pressed("down"))
+						{
+							player.position.addScaledVector(new THREE.Vector3(camDir.x,0,camDir.z),-0.1 * SCALE);
+						}
+						
+						if (keyboard.pressed("A"))
+						{
+							player.position.x -= 5 * Math.cos(camera.rotation.y);
+							player.position.z += 5 * Math.sin(camera.rotation.y);
+						}
+						if (keyboard.pressed("D"))
+						{
+							player.position.x += 5 * Math.cos(camera.rotation.y);
+							player.position.z -= 5 * Math.sin(camera.rotation.y);
+						}
+						
+						if (keyboard.pressed("pageup") && camera.rotation.x < (Math.PI / 5))
+						{
+							camera.rotation.x += 0.015;
+							bgCam.position.y += 0.015 * 3.84;
+						}
+						if (keyboard.pressed("pagedown") && camera.rotation.x > -(Math.PI / 5))
+						{
+							camera.rotation.x -= 0.015;
+							bgCam.position.y -= 0.015 * 3.84;
+						}
+						playerTrigger.setFromObject(player);
+											
+						if(bgMesh) bgMesh.material.map.offset.x = -camera.rotation.y / (0.5 * Math.PI) + 0.5;
+						
+						var originPoint = player.position.clone();
+						
+						for(var v = 0; v < player.geometry.vertices.length; v++)
+						{       
+							var localVertex = player.geometry.vertices[v].clone();
+							var globalVertex = localVertex.applyMatrix4(player.matrix);
+							var directionVector = globalVertex.sub(player.position);
+							
+							var ray = new THREE.Raycaster(originPoint, directionVector.clone().normalize());
+							var collisionResults = ray.intersectObjects(walls);
+							
+							collisionResults.map(result =>
+							{
+								if(result.distance < borg.initialSpeed)
+								{
+									var force = (directionVector.length() - result.distance) / player.geometry.vertices.length;
+									var collisionDir = result.face.normal;
+									player.position.addScaledVector(new THREE.Vector3(collisionDir.x,0,collisionDir.z),force);
+								}
+							})
+						}
+											
+						var triggerRay = new THREE.Raycaster(originPoint, new THREE.Vector3(0,-1,0));
+						var steppingOnTriggers = triggerRay.intersectObjects(triggers).map(hit => hit.object);
+											
+						var steppedOffTriggers = triggers.filter(trigger => !steppingOnTriggers.includes(trigger) && occupiedTriggers.includes(trigger) && trigger.triggered == true);
+						
+						if(omniSound.isPlaying)
+						{
+							var steppingOnAudio = steppingOnTriggers.filter(trigger => trigger.soundRef || trigger.soundBox);
+							steppingOnAudio.map(trigger => trigger.triggered = false);
+							steppingOnTriggers = steppingOnTriggers.filter(trigger => !steppingOnAudio.includes(trigger));
+													
+							if(player.position.x < omniSound.startingPosition.x - (SCALE / 2) || player.position.x > omniSound.startingPosition.x + (SCALE / 2) || player.position.z < omniSound.startingPosition.z - (SCALE / 2) || player.position.z > omniSound.startingPosition.z + (SCALE / 2)) omniSound.stop();
+						}
+						
+						steppedOffTriggers.map(steppedOffTrigger => 
+						{
+							steppedOffTrigger.checkCluster(function(cluster)
+							{
+								var stillActive = cluster.some(otherTrigger => steppingOnTriggers.includes(otherTrigger));
+								if(!stillActive)
+								{
+									steppedOffTrigger.onLeave(player);
+									occupiedTriggers.splice(occupiedTriggers.indexOf(steppedOffTrigger),1);
+								}
+								
+							});
+						});
+						
+						steppingOnTriggers.map(trigger =>
+						{
+							if(trigger.triggered == false) occupiedTriggers.push(trigger);
+							trigger.onEnter(player);
+						})
+						
+						updateAll(scene);
+						
+						renderer.autoClear = false;
+						renderer.clear();
+						renderer.render(bgScene, bgCam);
+						renderer.render(scene, camera);
+					}
+					render();
+					
+					function updateAll(origin)
+					{
+						if(origin.update && origin.type != "Sprite") origin.update();
+						origin.children.map(updateAll);
+					}
+				},
+
+				function(xhr)
 				{
-					if(origin.update && origin.type != "Sprite") origin.update();
-					origin.children.map(updateAll);
+					console.log( (xhr.loaded / xhr.total * 100) + '% loaded' );
+				},
+				function(err)
+				{
+					console.error(err);
 				}
-			})
-			reader.readAsText(file);
+			);
 		}
 		
 		function changeGTW(shortcut)
@@ -493,7 +508,7 @@
 				
 				var shimScript = document.createElement("script");
 				
-				var pathToBorg = borgPath + document.querySelector('input[type=file]').files[0].name;
+				var pathToBorg = document.querySelector('input[type=url]').value;
 				
 				var shimVars = shimContent.toString().replace("target","\"" + pathToBorg + "\"");
 				shimVarsStripped = shimVars.substring(shimVars.indexOf("{") + 1, shimVars.lastIndexOf("}"));

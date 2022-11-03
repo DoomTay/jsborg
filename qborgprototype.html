@@ -489,7 +489,6 @@
 							else path = path.substring(7);
 							var fullBorgPath = new URL(borgPath,window.location.href).href;
 							path = new URL(path,fullBorgPath + "domains/").href;
-							resolve(path);
 							var target = null;
 							var targetMatch = this.response.match(/TARGET="(\S+)"/);
 							if(targetMatch) target = targetMatch[1];

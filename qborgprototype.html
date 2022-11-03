@@ -85,6 +85,17 @@
 					}
 				})
 			}
+			
+			var shimScript = document.createElement("script");
+				
+			var pathToBorg = document.querySelector('input[type=url]').value;
+			
+			var shimVars = shimContent.toString().replace("target","\"" + pathToBorg + "\"");
+			shimVarsStripped = shimVars.substring(shimVars.indexOf("{") + 1, shimVars.lastIndexOf("}"));
+			
+			shimScript.innerHTML = shimVarsStripped;
+			
+			this.contentDocument.head.insertBefore(shimScript, this.contentDocument.head.firstChild);
 		}
 		
 		var player = new THREE.Mesh(new THREE.BoxGeometry(SCALE / 4, SCALE / 4, SCALE / 4), new THREE.MeshBasicMaterial({ visible:false}));
@@ -479,6 +490,10 @@
 							var fullBorgPath = new URL(borgPath,window.location.href).href;
 							path = new URL(path,fullBorgPath + "domains/").href;
 							resolve(path);
+							var target = null;
+							var targetMatch = this.response.match(/TARGET="(\S+)"/);
+							if(targetMatch) target = targetMatch[1];
+							resolve({path:path, target:target});
 						}
 						else reject(shortcutPath + " not found");
 					}
@@ -498,32 +513,8 @@
 		
 		function updateFrame(path)
 		{
-			var frameRetrieval = new XMLHttpRequest();
-			frameRetrieval.onload = function() {
-				var response = this.response;
-				
-				var newBase = document.createElement("base");
-				newBase.href = this.responseURL;
-				response.head.insertBefore(newBase, response.head.firstChild);
-				
-				var shimScript = document.createElement("script");
-				
-				var pathToBorg = document.querySelector('input[type=url]').value;
-				
-				var shimVars = shimContent.toString().replace("target","\"" + pathToBorg + "\"");
-				shimVarsStripped = shimVars.substring(shimVars.indexOf("{") + 1, shimVars.lastIndexOf("}"));
-				
-				shimScript.innerHTML = shimVarsStripped;
-				response.head.insertBefore(shimScript, response.head.firstChild);
-				
-				sidePanel.src = "data:text/html," + encodeURIComponent(response.documentElement.outerHTML);
-			}
-			frameRetrieval.open("GET", path, true);
-			frameRetrieval.overrideMimeType("text/html");
-			frameRetrieval.responseType = "document";
-			frameRetrieval.send();
-			
-			//sidePanel.src = path;
+			if(path.target == null) sidePanel.src = path.path;
+			else if(sidePanel.contentDocument) sidePanel.contentDocument.getElementsByName(path.target)[0].src = path.path;
 		}
 		
 		function playOmni(buffer)

@@ -12,6 +12,10 @@ function shimContent()
 	{
 		window.top.postMessage({type:"moveTile", layer:layer, fromX:fromX, fromY:fromY, toX:toX, toY:toY,keepOriginal:keepOriginal},"*")
 	}
+	window.external.tileValue = function(layer,x,y,option,value)
+	{
+		window.top.postMessage({type:"tileValue", layer:layer, x:x, y:y, option:option, value:value},"*")
+	}
 }
 
 function spawnSprite(x,y,material)
@@ -21,8 +25,8 @@ function spawnSprite(x,y,material)
 		//There isn't a wall here, so this is just a regular old sprite
 		var sprite = new THREE.Sprite(material);
 		//By default, sprites will be placed in the middle of the tile, but sometimes a sprite will be configured to be offset
-		sprite.position.x = (SCALE * x) - 128 + material.CWSData.worldPositionX;
-		sprite.position.z = (SCALE * y) + 128 - material.CWSData.worldPositionY;
+		sprite.position.x = (SCALE * (x - 0.5)) + material.CWSData.worldPositionX;
+		sprite.position.z = (SCALE * (y + 0.5)) - material.CWSData.worldPositionY;
 		sprite.scale.set(material.CWSData.worldWidth,material.CWSData.worldHeight,1);
 		sprite.position.y += (sprite.scale.y / 2) + (material.CWSData.worldPositionZ);
 	}
@@ -155,25 +159,50 @@ function spawnSprite(x,y,material)
 window.addEventListener("message", function(message)
 {
 	var command = message.data;
-	if(command.type == "moveTile")
+	
+	var material = new THREE.LineBasicMaterial( { color: Math.random() * 0xffffff } );
+	
+	function getObject(layer,x,y)
 	{
-		var possibleChildren = scene.children.filter(child => child.position.x > ((command.fromX - 1.5) * SCALE) && child.position.x < ((command.fromX - 0.5) * SCALE) && child.position.z > ((command.fromY - 1.5) * SCALE) && child.position.z < ((command.fromY - 0.5) * SCALE));
-		var filteredDestinationChildren = scene.children.filter(child => child.position.x > ((command.toX - 1.5) * SCALE) && child.position.x < ((command.toX - 0.5) * SCALE) && child.position.z > ((command.toY - 1.5) * SCALE) && child.position.z < ((command.toY - 0.5) * SCALE));
-		var targetedObject = undefined;
-		var currentOccupant = undefined;
-		switch(command.layer)
+		var possibleChildren = scene.children.filter(child => child.position.x >= ((x - 1.5) * SCALE) && child.position.x < ((x - 0.5) * SCALE) && child.position.z >= ((y - 1.5) * SCALE) && child.position.z < ((y - 0.5) * SCALE));
+		
+		var targetedObject = null;
+		
+		switch(layer)
 		{
 			case "SPRITE":
 				targetedObject = possibleChildren.find(child => child.type == "Sprite");
-				currentOccupant = filteredDestinationChildren.find(child => child.type == "Sprite");
-				if(targetedObject == null) alert("Missing sprite");
-				
-				spawnSprite(command.toX - 1,command.toY - 1,newMaterial(targetedObject.material));
 				break;
 			case "FLOOR":
 				targetedObject = possibleChildren.find(child => child.type == "FloorTile");
-				currentOccupant = filteredDestinationChildren.find(child => child.type == "FloorTile");
-				
+				break;
+			case "NOWALK":
+				targetedObject = possibleChildren.find(child => walls.includes(child));
+				break;
+			case "LINK2":
+				targetedObject = possibleChildren.find(child => child.type == "PlayerTrigger" && child.page2);
+				break;
+			default:
+				console.error("Unsupported layer " + command.layer);
+		}
+		
+		//if(targetedObject == null) alert("Missing " + layer + " at " + x + ", " + y);
+		
+		return targetedObject;
+	}
+	
+	if(command.type == "moveTile")
+	{
+		var targetedObject = getObject(command.layer,command.fromX,command.fromY);
+		var currentOccupant = getObject(command.layer,command.toX,command.toY);
+		
+		//console.log(targetedObject);
+		switch(command.layer)
+		{
+			case "SPRITE":				
+				spawnSprite(command.toX - 1,command.toY - 1,newMaterial(targetedObject.material));
+				break;
+			case "FLOOR":
 				var floorMaterial = targetedObject.material;
 				var plane = new FloorTile(floorMaterial);
 				plane.position.x = (command.toX - 1) * SCALE;
@@ -181,20 +210,18 @@ window.addEventListener("message", function(message)
 				scene.add(plane);
 				break;
 			case "NOWALK":
-				targetedObject = possibleChildren.find(child => walls.includes(child));
-				console.log(targetedObject);
-				var wallGeom = new THREE.BoxGeometry(SCALE, borg.height * 4, SCALE);
-				var wall = new THREE.Mesh(wallGeom, invisibleMaterial);
-				wall.position.x = (command.toX - 1) * SCALE;
-				wall.position.z = (command.toY - 1) * SCALE;
-				wall.position.y = ((borg.height * 4) / 2);
-				scene.add(wall);
-				walls.push(wall);
+				if(targetedObject)
+				{
+					var wallGeom = new THREE.BoxGeometry(SCALE, borg.height * 4, SCALE);
+					var wall = new THREE.Mesh(wallGeom, invisibleMaterial);
+					wall.position.x = (command.toX - 1) * SCALE;
+					wall.position.z = (command.toY - 1) * SCALE;
+					wall.position.y = ((borg.height * 4) / 2);
+					scene.add(wall);
+					walls.push(wall);
+				}
 				break;
-			case "LINK2":
-				targetedObject = possibleChildren.find(child => child.type == "PlayerTrigger" && child.page2);
-				currentOccupant = filteredDestinationChildren.find(child => child.type == "PlayerTrigger" && child.page2);
-				
+			case "LINK2":				
 				var page = targetedObject.page2;
 				var triggerBox = new PlayerTrigger(page,function() {changeGTW2(this.page2)},function() {changeGTW2(borg.defaultPage),true});
 				triggerBox.position.x = (command.toX - 1) * SCALE;
@@ -211,7 +238,11 @@ window.addEventListener("message", function(message)
 				console.error("Unsupported layer " + command.layer);
 		}
 		
-		if(currentOccupant) scene.remove(currentOccupant);
+		if(currentOccupant)
+		{
+			scene.remove(currentOccupant);
+			if(walls.includes(currentOccupant)) walls.splice(walls.indexOf(currentOccupant), 1);
+		}
 		
 		if(!command.keepOriginal)
 		{
@@ -220,7 +251,12 @@ window.addEventListener("message", function(message)
 			if(mouseTrigger) scene.remove(mouseTrigger);
 		}
 	}
-	else alert("Unsupported command type " + command.type);
+	else if(command.type == "tileValue")
+	{
+		targetedObject = getObject(command.layer,command.x,command.y);
+		
+		//console.log(targetedObject);
+	}
 }, false);
 
 function parseBorg(code)
@@ -547,12 +583,12 @@ function PlayerTrigger(triggerClass,onEnter,onLeave)
 
 PlayerTrigger.prototype = Object.create(THREE.Mesh.prototype);
 PlayerTrigger.prototype.constructor = PlayerTrigger;
+var invisibleMaterial = new THREE.MeshBasicMaterial({visible:false});
 
 function generateMap(scene,borgData,textureData)
 {
 	var planeGeom = new THREE.PlaneGeometry(SCALE, SCALE);
 	var wallGeom = new THREE.BoxGeometry(SCALE, borgData.height * 4, SCALE);
-	var invisibleMaterial = new THREE.MeshBasicMaterial({visible:false});
 	
 	for(var y = -1; y < 17; y++)
 	{

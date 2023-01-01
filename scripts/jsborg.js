@@ -28,7 +28,7 @@ function spawnSprite(x,y,material)
 		sprite.position.x = (SCALE * (x - 0.5)) + material.CWSData.worldPositionX;
 		sprite.position.z = (SCALE * (y + 0.5)) - material.CWSData.worldPositionY;
 		sprite.scale.set(material.CWSData.worldWidth,material.CWSData.worldHeight,1);
-		sprite.position.y += (sprite.scale.y / 2) + (material.CWSData.worldPositionZ);
+		sprite.position.y = (sprite.scale.y / 2) + material.CWSData.worldPositionZ;
 	}
 	
 	else
@@ -164,7 +164,7 @@ window.addEventListener("message", function(message)
 	
 	function getObject(layer,x,y)
 	{
-		var possibleChildren = scene.children.filter(child => child.position.x >= ((x - 1.5) * SCALE) && child.position.x < ((x - 0.5) * SCALE) && child.position.z >= ((y - 1.5) * SCALE) && child.position.z < ((y - 0.5) * SCALE));
+		var possibleChildren = scene.children.filter(child => child.position.x > ((x - 1.5) * SCALE) && child.position.x <= ((x - 0.5) * SCALE) && child.position.z > ((y - 1.5) * SCALE) && child.position.z <= ((y - 0.5) * SCALE));
 		
 		var targetedObject = null;
 		
@@ -185,9 +185,7 @@ window.addEventListener("message", function(message)
 			default:
 				console.error("Unsupported layer " + command.layer);
 		}
-		
-		//if(targetedObject == null) alert("Missing " + layer + " at " + x + ", " + y);
-		
+				
 		return targetedObject;
 	}
 	
@@ -196,7 +194,6 @@ window.addEventListener("message", function(message)
 		var targetedObject = getObject(command.layer,command.fromX,command.fromY);
 		var currentOccupant = getObject(command.layer,command.toX,command.toY);
 		
-		//console.log(targetedObject);
 		switch(command.layer)
 		{
 			case "SPRITE":				
@@ -235,7 +232,7 @@ window.addEventListener("message", function(message)
 				mouseTrigger.position.z = (command.toY - 1) * SCALE;
 				break;
 			default:
-				console.error("Unsupported layer " + command.layer);
+				console.error("Unsupported layer " + command.layer + " for moveTile");
 		}
 		
 		if(currentOccupant)
@@ -255,7 +252,27 @@ window.addEventListener("message", function(message)
 	{
 		targetedObject = getObject(command.layer,command.x,command.y);
 		
-		//console.log(targetedObject);
+		switch(command.layer)
+		{
+			case "WALL":
+				break;
+			case "SPRITE":
+				if(command.option == 0 || command.option == 3)
+				{
+					if(command.value)
+					{
+						var newHeight = command.value * 4;
+						var aspectRatio = targetedObject.scale.y / targetedObject.scale.x;
+						targetedObject.scale.y = newHeight;
+						targetedObject.scale.x = newHeight * aspectRatio;
+						targetedObject.position.y = (newHeight / 2) + targetedObject.material.CWSData.worldPositionZ;
+					}
+					else return targetedObject.scale.y / 4;
+				}
+				break;
+			default:
+				console.error("Unsupported layer " + command.layer + " for tileValue");
+		}
 	}
 }, false);
 

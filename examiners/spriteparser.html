@@ -236,7 +236,6 @@ function previewFile()
 					var subOffset = 0;
 										
 					newSegment.IDMark = bytesToString(getBytes(dataView.buffer,offset + subOffset,5));
-					//console.log(newSegment.IDMark,getBytes(dataView.buffer,offset + subOffset,5));
 					console.log(newSegment.IDMark,getBytes(dataView.buffer,offset + subOffset,8));
 					subOffset += 5;
 					
@@ -253,9 +252,11 @@ function previewFile()
 						subOffset -= 5;
 						newSegment.IDMark = bytesToString(getBytes(dataView.buffer,offset + subOffset,8));
 						subOffset += 8;
-						//var blob = new Blob( [ dataView.buffer.slice(offset + subOffset,offset + subOffset + byteCount - 2) ], { type: "image/png" } );
-						//console.log(window.URL.createObjectURL(blob));
+						var blob = new Blob( [ dataView.buffer.slice(offset + subOffset,offset + subOffset + byteCount - 2) ], { type: "image/png" } );
+						newSegment.blobUrl = window.URL.createObjectURL(blob);
 						//subOffset += 5;
+						newSegment.firstNumber = dataView.getUint32(offset + subOffset,true);
+						subOffset += 4;
 						
 						var mask = getBytes(dataView.buffer,offset + subOffset,byteCount - 2 - subOffset);
 												
@@ -336,9 +337,11 @@ function parseCWSData(chunk,marker)
 	newSegment.worldPositionX = dataView.getUint32(offset,true);
 	offset += 4;
 	var otherSettings = dataView.getUint32(offset,true);
+	//Seems to always be 0
 	newSegment.unknownThings.push((otherSettings >> 3) & 1);
 	newSegment.multiSided = ((otherSettings >> 2) & 1) == 1;
 	newSegment.enableMenuItem = ((otherSettings >> 1) & 1) == 0;
+	//Sometimes 1, sometimes 0
 	newSegment.unknownThings.push((otherSettings >> 0) & 1);
 	offset += 4;
 	newSegment.animateOnLoading = dataView.getUint32(offset,true) == 1;
@@ -361,6 +364,7 @@ function parseCWSData(chunk,marker)
 	newSegment.visibilityOnWest = ((visibility >> 1) & 1) == 1;
 	newSegment.visibilityOnEast = ((visibility >> 0) & 1) == 1;
 	offset += 4;
+	//Seems to always be 0
 	newSegment.unknownThings.push(dataView.getUint32(offset,true));
 	offset += 4;
 	newSegment.frameDurations = [];
@@ -375,8 +379,10 @@ function parseCWSData(chunk,marker)
 		offset += 4;
 		newSegment.unknownThings.push(dataView.getUint32(offset,true));
 		offset += 4;
+		//Seems to always be 4
 		newSegment.unknownThings.push(dataView.getUint32(offset,true));
 		offset += 4;
+		//Seems to always be 6
 		newSegment.unknownThings.push(dataView.getUint32(offset,true));
 		offset += 4;
 		newSegment.unknownThings.push(dataView.getUint32(offset,true));

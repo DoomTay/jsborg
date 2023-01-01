@@ -512,8 +512,8 @@
 		
 		function updateFrame(path)
 		{
-			if(path.target == null) sidePanel.src = path.path;
-			else if(sidePanel.contentDocument) sidePanel.contentDocument.getElementsByName(path.target)[0].src = path.path;
+			if(path.target == null && sidePanel.src != path.path) sidePanel.src = path.path;
+			else if(sidePanel.contentDocument && sidePanel.contentDocument.getElementsByName(path.target)[0]) sidePanel.contentDocument.getElementsByName(path.target)[0].src = path.path;
 		}
 		
 		function playOmni(buffer)
